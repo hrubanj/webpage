@@ -43,8 +43,9 @@ Snowflake optimization engine.
 + avoid unnecessary conversions
 
 ### Indexes
-The treacherous nature of Snowflake indexes. Covered queries.
+The treacherous nature of Snowflake indexes. Covered queries. Index hinting. Too many indexes.
 
 ### Experiment
+Sometimes, you improve your queries by just tweaking them with not concrete theory. The solution might come before its explanation.
 
 
