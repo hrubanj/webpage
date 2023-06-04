@@ -18,6 +18,15 @@ analytics tend to use SQL and be tabular but non-relational. On the other hand, 
 Yet another group uses tables as an underlying storage but does not support SQL queries (e.g. EdgeDB).
 
 ### Premature optimization
+We started the article hinting that improving query performance can boost your applications significantly. But not always.
+Is it a problem that a query takes ten minutes? What if it runs once a day, does not block any other queries, and processes terabytes of data? Maybe not a problem.
+What if it needs huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
+But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it hundred times per second. Well...
+Before you start optimizing, know the metric you need to improve. It can be cluster cost, database load, a response time of an endpoint, duration of some job, and many other things.
+Only then, you can actually decide what to optimize.
+
+Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more advantageous to get a larger database.
+On some occasions, your best option is to start tweaking SQL queries. And that is the fun part.
 
 ### Horses for courses (OLAP vs. OLTP)
 Are you working with the right type of database?
@@ -103,12 +112,21 @@ If you can, use grouping.
 ### Good design helps you avoid deduplication
 
 ### Database structure
-table + table_advanced
+
 
 ### Keep your queries simple
-Snowflake optimization engine.
+If you can, keep your queries simple. You will make it easier for query planners to find and efficient query plan.
+Snowflake actually recommends exactly this—use simple queries and let the query planner do its job.
+Of course, this is often easier said then done. You might actually need a more complex transformation, and it is not possible
+to get the required data in a simple query. In such cases, Snowflake recommends using sub-tables (TODO: add source). These do come with
+a danger of sacrificing data integrity, however. Moreover, in OLTP databases, you often can't afford to copy tons of data back and forth,
+not to mention work with outdated data. Lets look at the alternatives, you have, if you want to keep you queries simple, but you need to
+transform data in a non-trivial way.
+
 
 ### Use subtables in OLAP (+ Materialized views)
+table + table_advanced
+I've seen real programmers cry in pain...
 
 ### Memory vs. speed tradeoff
 
