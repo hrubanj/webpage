@@ -13,7 +13,7 @@ If you want to run the examples yourself, go to this (TODO: add link) repository
 
 We limited the scope of this post to 'tabular databases that support SQL'. Such a long-winded definition might seem unnecessary, so let's unpack it.
 Tabular databases are databases that store data in tables. SQL support means that we can use standard SQL (ANSI???) to query them.
-This is not the same thing as relational databases--for example Snowflake falls under our definition, but it does not let you define relations. Generally, databases for
+This is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relations. Generally, databases for
 analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular (e.g. CosmosDB).
 Yet another group uses tables as an underlying storage but does not support SQL queries (e.g. EdgeDB).
 
@@ -24,7 +24,7 @@ Are you working with the right type of database?
 Even though, you can just copy-paste most of your Postgres queries and run them in Snowflake, these databases are useful for entirely different purposes.
 While Postgres is optimized for quickly fetching individual rows, Snowflake shows its strength on large data aggregations.
 On the flipside, you probably shouldn't build a data lake on Postgres, and you should definitely avoid using Snowflake for low-latency applications.
-I used to joke that every query takes a couple of seconds in Snowflake--no matter whether you are retrieving one row or performing an aggregation over millions of rows.
+I used to joke that every query takes a couple of seconds in Snowflake—no matter whether you are retrieving one row or performing an aggregation over millions of rows.
 Of course, it works up to a point, once you get to really large table, even Snowflake queries take minutes or hours.
 More generally, Postgres is an online transactional processing (OLTP) database, and Snowflake is an online analytics processing (OLAP) database.
 Use OLTP if you need low latency, and OLAP if you need heavy aggregations.
@@ -33,7 +33,7 @@ TODO: examples
 
 Our examples will work either with Postgres or DuckDB. I am planning to add more database examples in the database playground repository in the future.
 Most techniques we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
-This is usually because OLAP database try to be smarter--since they don't intend respond within milliseconds, they can take more time to optimize query execution.
+This is usually because OLAP database try to be smarter—since they don't intend respond within milliseconds, they can take more time to optimize query execution.
 The positive of this is that a poorly written query can perform well on OLAP. The negative is that finetuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one. After all, SQL is a declarative language (TODO: expand).
 
@@ -119,10 +119,81 @@ Snowflake optimization engine.
 The treacherous nature of Snowflake indexes. Covered queries. Index hinting. Too many indexes.
 
 ### Hinting
-Inexplicable performance boost sometimes from useless operations.
+Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
+by removing an unnecessary join.
+The query was supposed to extract the first content block of articles published on the website (TODO: possibly reproduce) and it looked like this:
+```sql
+select e2.id,
+       mac.field_module_text,
+       e3.handle
+from matrixcontent_articlecontent mac
+         inner join elements e on e.id = mac."elementId"
+         inner join matrixblocks mb on e.id = mb."id"
+         inner join entries e2 on mb."ownerId" = e2.id
+         inner join entrytypes e3 on e2."typeId" = e3.id
+where e."dateDeleted" is null
+  and e.enabled
+  and not e.archived
+  and mb."sortOrder" = 1 -- the first article block
+  and e2."postDate" is not null
+;
+```
+It was a subquery in a larger query, but I will not copy the whole thing here as it would be hard to see the important parts.
+
+While refactoring the code, I realized that the `handle` column is not used anywhere, so, I removed it. The output no longer included any data from the `entrytypes` table.
+You might think that the `entrytypes` table still did some filtering since we are performing inner join. But it does not filter anything, even though you cannot see it from the query alone.
+I am joining `entrytypes` on `entries` on `entries.typeId` = `entrytypes.id`. `entries.typeId` is a non-nullable column with a foreign key to `entrytypes.id`, and
+`entrytypes.id` is a primary key. Hence, if I remove the excessive join, the output will be identical.
+
+That is what I did hoping to see some performance improvement. Now, the sub-query looked like this:
+```sql
+select e2.id,
+       mac.field_module_text
+from matrixcontent_articlecontent mac
+         inner join elements e on e.id = mac."elementId"
+         inner join matrixblocks mb on e.id = mb."id"
+         inner join entries e2 on mb."ownerId" = e2.id
+where e."dateDeleted" is null
+  and e.enabled
+  and not e.archived
+  and mb."sortOrder" = 1 -- the first article block
+  and e2."postDate" is not null
+;
+```
+The execution time went from roughly 300 ms to 51 s. I was not happy.
+When I kept the join there, the performance remained similar to the original.
+I took the subquery out and started looking into it, but then came another surprise—in isolation, the execution time did not worsen without the join.
+It turned out that when it was a part of a larger query, the join provided some kind of hint to the query optimized, and it chose a better plan.
+TODO: dissect query plan
+So, I ended up with seemingly non-sensical query:
+```sql
+select e2.id,
+       mac.field_module_text
+from matrixcontent_articlecontent mac
+         inner join elements e on e.id = mac."elementId"
+         inner join matrixblocks mb on e.id = mb."id"
+         inner join entries e2 on mb."ownerId" = e2.id
+         inner join entrytypes e3 on e2."typeId" = e3.id -- does not filter anything, but hints query planner
+where e."dateDeleted" is null
+  and e.enabled
+  and not e.archived
+  and mb."sortOrder" = 1 -- the first article block
+  and e2."postDate" is not null
+;
+```
+I am not suggesting that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
+But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer' mistake.
 
 
-### Experiment
-Sometimes, you improve your queries by just tweaking them with not concrete theory. The solution might come before its explanation.
+
+### Question and experiment
+Linear thinking won't always get you there. Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
+choose the most efficient functions, measure changes, and repeat.
+But sometimes, queries will be slow, no matter how much love and care you give them.
+
+Then, you have to think more broadly. Can you get the data from somewhere else, split the query into parts, or redefine the database structure?
+Do you actually need to return all data in this query? Who uses it? What for?
+
+Always question your assumptions. Don't be afraid to trust your gut and try crazy things. This is more of a general life advice, so, we might as well end the article here.
 
 
