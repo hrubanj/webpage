@@ -46,6 +46,7 @@ This is usually because OLAP database try to be smarter—since they don't inten
 The positive of this is that a poorly written query can perform well on OLAP. The negative is that finetuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one. After all, SQL is a declarative language (TODO: expand).
 
+TODO: hint to possible future articles about differences in OLAP and OLTP principles
 
 ### WHERE to start
 Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen were resulted from, often small, changes to filtering clause.
@@ -96,15 +97,12 @@ Or you might know that a table includes duplicate join keys, so, you deduplicate
 Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
 what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
 I think execution plan visualizers are of great help here. While I might struggle to find the source of issues in the textual plan, it is 
-often clear as mountain water from the first look at the picture.
+often clear from the first look at the picture.
 Some database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
 
 Use visualizers if available.
 e.g. EXPLAIN in postgres
 
-
-### Subqueries
-Can reduce the amount of data and speed up further processing. But the time that the subquery takes is often not worth it.
 
 ### Grouping vs. Window functions for deduplication
 If you can, use grouping.
@@ -123,18 +121,81 @@ a danger of sacrificing data integrity, however. Moreover, in OLTP databases, yo
 not to mention work with outdated data. Lets look at the alternatives, you have, if you want to keep you queries simple, but you need to
 transform data in a non-trivial way.
 
+### Subqueries
+Subqueries and common table expressions (CTEs) are often necessary unless you decide to create a temporary table or  view.
+Occasionally, they are useful even if you could theoretically avoid them. For example, instead of performing complicated cross join
+and filtering its results, you may be better of de-duplicating tables first, and then joining them without having to filter the result.
+The caveats are: query planner might be smart enough to optimize the original (non-nested) query, and using subqueries can actually
+confuse it. Hence, this is something you have to test—there is not theoretical rule that will reliably tell whether using subquery is
+a good idea in particular case. What usually works for me is checking the size of the table in subquery before and after applying
+the subquery filter. If it is large and becomes significantly smaller after filtering, putting the filter into subquery might work.
+Otherwise, it usually won't.
+Let's explore when subqueries help with some examples.
+TODO: add examples where subqueries work and where they harm
 
 ### Use subtables in OLAP (+ Materialized views)
-table + table_advanced
-I've seen real programmers cry in pain...
+I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
+These boastful suffixes usually indicate that it is just the original order table with a few columns joined from another table.
+I've seen hardcore programmers cry in pain when they heard of such duplication and violation of data integrity.
+The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
+
+Subtable is not an official term. TODO: explain  / maybe use derived table instead
+
+Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
+which is exactly what the order_advanced table gives them. Of course, they could join the transportation costs themselves
+but that might make they query too slow and they would need to duplicate the joining code creating a potential for mistakes.
+If they don't expect near real-time data, the inconsistency is not such a big problem. I.e. they cannot expect to join order data
+to, for example, website traffic data for today, and expect a reliable result. If the order_advanced is refreshed once a day, they should just discard todays data.
+
+Another case where you might reach for a subtable is an OLAP job. Instead of crafting complicated nested queries, you just create
+temporary table simplifying query planner's job, and delete them when transformation finished.
+
+A better alternative to non-temporary subtable is a materialized view, which is basically a table that knows how to
+refresh its data. Materialized view is read-only—you can write only to underlying tables. On refresh, it runs the queries
+by which it was created.
+However, making sure that the refresh happens when it should is a discipline of its own. (I might write another article on that).
+The difference between view and materialized view is that materialized view runs queries on refresh, and holds the data,
+i.e. it is a 'derived table', whereas normal view runs its queries when you query the view.
+
+I would argue that using a materialized view is better than using persistent subtables. Materialized view clearly indicates
+that is is read only and can be refreshed with one command.
+
+On the other hand, you might have good reasons to use subtables, e.g.,  for compatibility with exporters to other systems
+or to make sure that your code lives somewhere else and not in the database.
+
+Some examples where materialized view can help: TODO
+
+The same thing with subtable TODO:
+
 
 ### Memory vs. speed tradeoff
 
 ### Use correct datatypes
 + avoid unnecessary conversions
 
-### Indexes, clustering keys
-The treacherous nature of Snowflake indexes. Covered queries. Index hinting. Too many indexes.
+### Indices, clustering keys, partitioning keys
+
+You definitely want to hit an index. Indices are the most common tool databases give you to speed up looking up or filtering records.
+When your query hits an index, database does not need to scan the whole table, and this needs to read much less data.
+Indices work primarily in OLTP databases.
+
+Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
+that this creates a unique index as a well-behaved database would do. Instead, it only adds a non-null constraint on the columns.
+Snowflake says in their documentation that they use indices mainly as a documentation feature, but I am sure I was not the
+only person who was confused by duplicates in a primary key column.
+
+In OLAP databases, you might encounter clustering, partitioning, or some other keys. These are columns that usually divide table into
+chunks. If we take our `post` table from previous examples and set clustering key to `updated_at`, the database
+will ideally create chunks that cover mutually exclusive time intervals of `updated_at` (TODO: check). 
+Hitting a clustering or partitioning key amounts to similar jackpot as hitting an index—the database needs to process
+only the partition with the key. If you do not hit the key, it needs to check all partitions.
+
+Clustering or partitioning is primarily useful on larger tables (think > 1TB); with smaller ones, the overhead of shuffling data
+might not be worth it. If you are paying for the time that database does something, as in Snowflake, you should also consider
+that partitioning large table takes a lot of time and needs to happen regularly, otherwise the partitions won't be balanced,
+which will worsen query performance.
+
+TODO: examples of both indices and partitioning
 
 ### Hinting
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
