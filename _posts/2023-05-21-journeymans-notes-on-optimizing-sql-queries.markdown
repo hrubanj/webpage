@@ -2,8 +2,9 @@
 layout: post
 title:  "Journeyman's Notes on Optimizing SQL Queries"
 date:   2023-05-10 21:00:00 +0000
-categories: programming
+categories: [programming, sql]
 ---
+### Introduction
 
 Whether you are running a webpage, an analytic platform, or a data processing job, how you query your database crucially impacts how your application performs.
 In this article, we will look at some examples of optimization techniques that I use when database performance becomes an issue.
@@ -107,10 +108,9 @@ e.g. EXPLAIN in postgres
 ### Grouping vs. Window functions for deduplication
 If you can, use grouping.
 
-### Good design helps you avoid deduplication
+### Database structure: Good design helps you avoid deduplication
 
-### Database structure
-
+TODO: more on this in another article
 
 ### Keep your queries simple
 If you can, keep your queries simple. You will make it easier for query planners to find and efficient query plan.
@@ -169,6 +169,7 @@ The same thing with subtable TODO:
 
 
 ### Memory vs. speed tradeoff
+TODO: possible mention that we care mainly about speed, but do not want to kil the DB
 
 ### Use correct datatypes
 + avoid unnecessary conversions
@@ -264,8 +265,7 @@ I am not suggesting that you should go crazy adding unnecessary joins to your qu
 But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer' mistake.
 
 
-
-### Question and experiment
+### Conclusion: Question and experiment
 Linear thinking won't always get you there. Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
 choose the most efficient functions, measure changes, and repeat.
 But sometimes, queries will be slow, no matter how much love and care you give them.
@@ -274,5 +274,3 @@ Then, you have to think more broadly. Can you get the data from somewhere else, 
 Do you actually need to return all data in this query? Who uses it? What for?
 
 Always question your assumptions. Don't be afraid to trust your gut and try crazy things. This is more of a general life advice, so, we might as well end the article here.
-
-
