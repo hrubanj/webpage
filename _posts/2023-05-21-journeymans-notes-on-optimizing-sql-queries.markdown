@@ -22,7 +22,7 @@ Yet another group uses tables as an underlying storage but does not support SQL 
 We started the article hinting that improving query performance can boost your applications significantly. But not always.
 Is it a problem that a query takes ten minutes? What if it runs once a day, does not block any other queries, and processes terabytes of data? Maybe not a problem.
 What if it needs huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
-But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it hundred times per second. Well...
+But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it a hundred times per second. Well...
 Before you start optimizing, know the metric you need to improve. It can be cluster cost, database load, a response time of an endpoint, duration of some job, and many other things.
 Only then, you can actually decide what to optimize.
 
@@ -42,16 +42,50 @@ Use OLTP if you need low latency, and OLAP if you need heavy aggregations.
 TODO: examples
 
 Our examples will work either with Postgres or DuckDB. I am planning to add more database examples in the database playground repository in the future.
-Most techniques we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
+Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
 This is usually because OLAP database try to be smarter—since they don't intend respond within milliseconds, they can take more time to optimize query execution.
-The positive of this is that a poorly written query can perform well on OLAP. The negative is that finetuning the query might not always work because the query 
+The positive of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one. After all, SQL is a declarative language (TODO: expand).
 
 TODO: hint to possible future articles about differences in OLAP and OLTP principles
 
+- Apache Druid
+- Clickhouse
+
+
+### Understand your data
+Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
+to make sure that these assumptions are accurate. But you can still do better than them.
+While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
+be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
+Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
+
+### Clean up
+A few years ago, I was put in charge of an application. Right from the outset I heard complaints that it is slower than it used to be
+and customers are upset. After some profiling, I realized that fetching data was the bottleneck. The application was supposed to 
+compute several metrics for products and what stroke me as odd was that there were a lot more products in the database than the company
+actually sold. Indeed, most products in the database were inactive. When I deleted them, the critical endpoint got 3 times faster.
+Deleting what you don't need is one of the easiest ways to speed up your queries. If you do not have automatic cleanup processes
+in place, data tends to pile up. Since the queries need to run through more data, they get slower.
+Delete obsolete data and setup processed that do it regularly for you.
+There will be data that you can't delete–for legal reasons or to not upset your users. Sometimes, you might get around this
+by creating snapshot tables or materialized views (see Use subtables in OLAP (+ Materialized views)). If that is not possible,
+keep in mind that your application's performance will gradually degrade. That does not always have to be a problem. If the accumulation
+is not too fast, the performance penalty may be something that you don't need to worry about for the lifespan of most applications.
+
+### Use diagnostic tools
+Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
+what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
+I think execution plan visualizers are of great help here. While I might struggle to find the source of issues in the textual plan, it is 
+often clear from the first look at the picture.
+Some database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
+
+Use visualizers if available.
+e.g. EXPLAIN in postgres
+
 ### WHERE to start
 Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen were resulted from, often small, changes to filtering clause.
-Lets look at an example query.
+Let's look at an example query.
 ```sql
 select 
     u.name,
@@ -82,35 +116,26 @@ to calculate `posts_per_second_active` before removing rows where `max(p.time_cr
 
 In reality, the filtering (`WHERE` clause), or parts of it, might get executed even before tables are joined.
 `WHERE` clause reduces the amount of data we are working with from the start, and all subsequent steps have
-easier job if they work with less data.
+easier job if they work with fewer data.
 
 NB: where clause that duplicates condition already included in an inner join might actually slow the query down.
 
 
-### Understand your data
-Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
-to make sure that these assumptions are accurate. But you can still do better than them.
-While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
-be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
-Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
+### Aggregation vs. sorting
+Sorting is expensive. If you can, you should probably avoid it.
+I've seen quite a lot of code that sorts table only to get a maximum of some column, i.e. where simple group by would work
+fine. Most often, such queries started out as more complex, and the sorting was originally necessary to get values
+from some other column on the same line as our sorting column. Then, someone simplified but did not realize that
+instead of sorting they can use aggregation.
+Let's see how this can happen on an example: TODO
 
-### Use diagnostic tools
-Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
-what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
-I think execution plan visualizers are of great help here. While I might struggle to find the source of issues in the textual plan, it is 
-often clear from the first look at the picture.
-Some database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
+### Database design
 
-Use visualizers if available.
-e.g. EXPLAIN in postgres
-
-
-### Grouping vs. Window functions for deduplication
-If you can, use grouping.
-
-### Database structure: Good design helps you avoid deduplication
-
-TODO: more on this in another article
+A well-designed can save you a ton of troubles. While there are theoretical approaches that will lead you to the most
+logically consistent structure, you should consider think about the performance you need to.
+What data gets read and written the most, do you prefer to hold historical data or not having to sort to get the most recent snapshot.
+What datatypes you need etc.
+This is a much broader topic, and I hope to cover it in some of the following articles.
 
 ### Keep your queries simple
 If you can, keep your queries simple. You will make it easier for query planners to find and efficient query plan.
@@ -118,13 +143,13 @@ Snowflake actually recommends exactly this—use simple queries and let the quer
 Of course, this is often easier said then done. You might actually need a more complex transformation, and it is not possible
 to get the required data in a simple query. In such cases, Snowflake recommends using sub-tables (TODO: add source). These do come with
 a danger of sacrificing data integrity, however. Moreover, in OLTP databases, you often can't afford to copy tons of data back and forth,
-not to mention work with outdated data. Lets look at the alternatives, you have, if you want to keep you queries simple, but you need to
+not to mention work with outdated data. Let's look at the alternatives, you have, if you want to keep you queries simple, but you need to
 transform data in a non-trivial way.
 
 ### Subqueries
 Subqueries and common table expressions (CTEs) are often necessary unless you decide to create a temporary table or  view.
 Occasionally, they are useful even if you could theoretically avoid them. For example, instead of performing complicated cross join
-and filtering its results, you may be better of de-duplicating tables first, and then joining them without having to filter the result.
+and filtering its results, you may be better off de-duplicating tables first, and then joining them without having to filter the result.
 The caveats are: query planner might be smart enough to optimize the original (non-nested) query, and using subqueries can actually
 confuse it. Hence, this is something you have to test—there is not theoretical rule that will reliably tell whether using subquery is
 a good idea in particular case. What usually works for me is checking the size of the table in subquery before and after applying
@@ -143,9 +168,9 @@ Subtable is not an official term. TODO: explain  / maybe use derived table inste
 
 Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
 which is exactly what the order_advanced table gives them. Of course, they could join the transportation costs themselves
-but that might make they query too slow and they would need to duplicate the joining code creating a potential for mistakes.
+but that might make they query too slow, and they would need to duplicate the joining code creating a potential for mistakes.
 If they don't expect near real-time data, the inconsistency is not such a big problem. I.e. they cannot expect to join order data
-to, for example, website traffic data for today, and expect a reliable result. If the order_advanced is refreshed once a day, they should just discard todays data.
+to, for example, website traffic data for today, and expect a reliable result. If the order_advanced is refreshed once a day, they should just discard today's data.
 
 Another case where you might reach for a subtable is an OLAP job. Instead of crafting complicated nested queries, you just create
 temporary table simplifying query planner's job, and delete them when transformation finished.
@@ -158,7 +183,7 @@ The difference between view and materialized view is that materialized view runs
 i.e. it is a 'derived table', whereas normal view runs its queries when you query the view.
 
 I would argue that using a materialized view is better than using persistent subtables. Materialized view clearly indicates
-that is is read only and can be refreshed with one command.
+that is read only and can be refreshed with one command.
 
 On the other hand, you might have good reasons to use subtables, e.g.,  for compatibility with exporters to other systems
 or to make sure that your code lives somewhere else and not in the database.
@@ -168,16 +193,10 @@ Some examples where materialized view can help: TODO
 The same thing with subtable TODO:
 
 
-### Memory vs. speed tradeoff
-TODO: possible mention that we care mainly about speed, but do not want to kil the DB
-
-### Use correct datatypes
-+ avoid unnecessary conversions
-
 ### Indices, clustering keys, partitioning keys
 
-You definitely want to hit an index. Indices are the most common tool databases give you to speed up looking up or filtering records.
-When your query hits an index, database does not need to scan the whole table, and this needs to read much less data.
+You definitely want to hit an index. Indices are the most common tool databases give you to speed up fetching or filtering records.
+When your query hits an index, database does not need to scan the whole table, and this needs to read much fewer data.
 Indices work primarily in OLTP databases.
 
 Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
@@ -225,7 +244,7 @@ You might think that the `entrytypes` table still did some filtering since we ar
 I am joining `entrytypes` on `entries` on `entries.typeId` = `entrytypes.id`. `entries.typeId` is a non-nullable column with a foreign key to `entrytypes.id`, and
 `entrytypes.id` is a primary key. Hence, if I remove the excessive join, the output will be identical.
 
-That is what I did hoping to see some performance improvement. Now, the sub-query looked like this:
+That is what I did, hoping to see some performance improvement. Now, the sub-query looked like this:
 ```sql
 select e2.id,
        mac.field_module_text
@@ -245,7 +264,7 @@ When I kept the join there, the performance remained similar to the original.
 I took the subquery out and started looking into it, but then came another surprise—in isolation, the execution time did not worsen without the join.
 It turned out that when it was a part of a larger query, the join provided some kind of hint to the query optimized, and it chose a better plan.
 TODO: dissect query plan
-So, I ended up with seemingly non-sensical query:
+So, I ended up with seemingly nonsensical query:
 ```sql
 select e2.id,
        mac.field_module_text
@@ -262,7 +281,7 @@ where e."dateDeleted" is null
 ;
 ```
 I am not suggesting that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
-But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer' mistake.
+But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
 
 ### Conclusion: Question and experiment
