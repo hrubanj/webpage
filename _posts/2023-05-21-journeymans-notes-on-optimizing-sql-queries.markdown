@@ -39,7 +39,26 @@ Of course, it works up to a point, once you get to really large table, even Snow
 More generally, Postgres is an online transactional processing (OLTP) database, and Snowflake is an online analytics processing (OLAP) database.
 Use OLTP if you need low latency, and OLAP if you need heavy aggregations.
 
-TODO: examples
+A typical OLTP query might look something like this:
+```sql
+select email
+from "user"
+where id = 333
+;
+```
+While an OLAP query might look more like this:
+```sql
+select u.name,
+       substr(p.time_created::text, 1, 4) as year,
+       round(avg(length(p.content)), 2)   as avg_post_characters
+from "post" p
+         inner join "user" u on u.id = p.user_id
+group by 1, 2
+order by 1, 2
+;
+```
+In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
+But let us not get ahead of ourselves.
 
 Our examples will work either with Postgres or DuckDB. I am planning to add more database examples in the database playground repository in the future.
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
@@ -47,7 +66,6 @@ This is usually because OLAP database try to be smarter—since they don't inten
 The positive of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one. After all, SQL is a declarative language (TODO: expand).
 
-TODO: hint to possible future articles about differences in OLAP and OLTP principles
 
 - Apache Druid
 - Clickhouse
@@ -84,7 +102,7 @@ Use visualizers if available.
 e.g. EXPLAIN in postgres
 
 ### WHERE to start
-Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen were resulted from, often small, changes to filtering clause.
+Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen resulted from, often small, changes to filtering clause.
 Let's look at an example query.
 ```sql
 select 
@@ -118,8 +136,12 @@ In reality, the filtering (`WHERE` clause), or parts of it, might get executed e
 `WHERE` clause reduces the amount of data we are working with from the start, and all subsequent steps have
 easier job if they work with fewer data.
 
-NB: where clause that duplicates condition already included in an inner join might actually slow the query down.
-
+On the other hand, a where clause that duplicates condition already included in a join might actually slow the query down.
+Let's compare these two queries:
+```sql
+TODO
+```
+The where clause duplicates a condition that is
 
 ### Aggregation vs. sorting
 Sorting is expensive. If you can, you should probably avoid it.
@@ -283,6 +305,8 @@ where e."dateDeleted" is null
 I am not suggesting that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
 But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
+### Always validate that your solution works in production
+TODO: explain that even with the same data, same database version, and similar machine, different query plan can be used
 
 ### Conclusion: Question and experiment
 Linear thinking won't always get you there. Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
