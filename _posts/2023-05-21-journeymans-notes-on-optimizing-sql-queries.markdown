@@ -29,6 +29,13 @@ Only then, you can actually decide what to optimize.
 Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more advantageous to get a larger database.
 On some occasions, your best option is to start tweaking SQL queries. And that is the fun part.
 
+### Our toy dataset
+Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of users, posts,
+comments, and visits. The data is pseudo-randomly generated (see linked repository), and serves only for to show how to tweak queries.
+If you look into the data, you might discover some nonsensical patterns. We could avoid many of those by using a more
+nuanced data generation process with more constraints, but it is not necessary for our use case.
+
+
 ### Horses for courses (OLAP vs. OLTP)
 Are you working with the right type of database?
 Even though, you can just copy-paste most of your Postgres queries and run them in Snowflake, these databases are useful for entirely different purposes.
@@ -70,6 +77,14 @@ optimizer might translate it to the same plan as the suboptimal one. After all, 
 - Apache Druid
 - Clickhouse
 
+### Database design
+
+A well-designed can save you a ton of troubles. While there are theoretical approaches that will lead you to the most
+logically consistent structure, you should think about the performance you need to get.
+What data gets read and written the most, do you prefer to hold historical data or not having to sort to get the most recent snapshot.
+What datatypes you need etc.
+This article is primarily about optimizing queries when your database is already set up.
+I hope to write a separate article about database design in the future.
 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
@@ -77,6 +92,89 @@ to make sure that these assumptions are accurate. But you can still do better th
 While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
 be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
+
+TODO: example
+
+### Use diagnostic tools
+Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
+what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
+Sometimes, query plan will show you on what parts of the query you should focus, but on some occasions, you will see
+that the query plan is clearly suboptimal given your data–for example if order of joins is such that most data is filtered out 
+at the end. In the latter case, you might try to push query planner into picking a better plan.
+You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
+the optimal plan. I try to stay away from the first option–unless the distribution of data is very stable, you can shoot yourself in
+the foot by committing to a specific query plan and not letting the optimizer decide it dynamically. By plan hinting in Postgres,
+you are effectively disabling its optimizer. Normally, Postgres' optimizer is cost-based as probably in most databases.
+It estimates costs of different possible plans and selects the cheapest, but if we use hints, we restrict its freedom of choice.
+There are certainly situations when plan hinting is the best strategy, but, from my experience, they are extremely rare.
+
+
+I think execution plan visualizers are great. While I might struggle to find the source of issues in the textual plan, it is 
+often clear from the first look at the picture.
+Some SAAS database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
+
+Lets' see this on a simple example query. We want to find out whether people are more likely to comment on posts from poster's
+with the same email domain as they have. (Spoiler alert: They should not since the data is pseudo-random).
+
+```sql
+explain (analyse , buffers , verbose)
+select split_part(u1.email, '@', 2) as poster_domail,
+       split_part(u2.email, '@', 2) as commenter_domain,
+       count(*)                     as cnt
+from comment c
+         inner join post p on c.post_id = p.id
+         inner join "user" u1 on u1.id = p.user_id
+         inner join "user" u2 on u2.id = c.user_id
+group by 1, 2
+order by 1, 2
+;
+```
+This is the query plan output by Postgres:
+
+| QUERY PLAN |
+| :--- |
+| Finalize GroupAggregate  \(cost=152758.07..280612.17 rows=1000000 width=72\) \(actual time=1053.968..1141.873 rows=9 loops=1\) |
+|   Group Key: \(split\_part\(\(u1.email\)::text, '@'::text, 2\)\), \(split\_part\(\(u2.email\)::text, '@'::text, 2\)\) |
+|   -&gt;  Gather Merge  \(cost=152758.07..259362.17 rows=833334 width=72\) \(actual time=1045.034..1141.836 rows=27 loops=1\) |
+|         Workers Planned: 2 |
+|         Workers Launched: 2 |
+|         -&gt;  Partial GroupAggregate  \(cost=151758.05..162174.72 rows=416667 width=72\) \(actual time=902.608..979.276 rows=9 loops=3\) |
+|               Group Key: \(split\_part\(\(u1.email\)::text, '@'::text, 2\)\), \(split\_part\(\(u2.email\)::text, '@'::text, 2\)\) |
+|               -&gt;  Sort  \(cost=151758.05..152799.72 rows=416667 width=64\) \(actual time=886.347..940.587 rows=333273 loops=3\) |
+|                     Sort Key: \(split\_part\(\(u1.email\)::text, '@'::text, 2\)\), \(split\_part\(\(u2.email\)::text, '@'::text, 2\)\) |
+|                     Sort Method: external merge  Disk: 10528kB |
+|                     Worker 0:  Sort Method: external merge  Disk: 9752kB |
+|                     Worker 1:  Sort Method: external merge  Disk: 13112kB |
+|                     -&gt;  Hash Join  \(cost=55962.05..97199.23 rows=416667 width=64\) \(actual time=315.504..733.590 rows=333273 loops=3\) |
+|                           Hash Cond: \(c.user\_id = u2.id\) |
+|                           -&gt;  Hash Join  \(cost=55592.05..93651.68 rows=416667 width=26\) \(actual time=292.296..561.203 rows=333307 loops=3\) |
+|                                 Hash Cond: \(p.user\_id = u1.id\) |
+|                                 -&gt;  Parallel Hash Join  \(cost=55222.05..92187.46 rows=416667 width=8\) \(actual time=290.426..480.756 rows=333332 loops=3\) |
+|                                       Hash Cond: \(c.post\_id = p.id\) |
+|                                       -&gt;  Parallel Seq Scan on comment c  \(cost=0.00..30987.67 rows=416667 width=8\) \(actual time=0.049..80.839 rows=333333 loops=3\) |
+|                                       -&gt;  Parallel Hash  \(cost=48385.13..48385.13 rows=416713 width=8\) \(actual time=139.630..139.631 rows=333333 loops=3\) |
+|                                             Buckets: 262144  Batches: 8  Memory Usage: 6976kB |
+|                                             -&gt;  Parallel Seq Scan on post p  \(cost=0.00..48385.13 rows=416713 width=8\) \(actual time=0.045..65.557 rows=333333 loops=3\) |
+|                                 -&gt;  Hash  \(cost=245.00..245.00 rows=10000 width=26\) \(actual time=1.820..1.821 rows=10000 loops=3\) |
+|                                       Buckets: 16384  Batches: 1  Memory Usage: 717kB |
+|                                       -&gt;  Seq Scan on "user" u1  \(cost=0.00..245.00 rows=10000 width=26\) \(actual time=0.012..0.760 rows=10000 loops=3\) |
+|                           -&gt;  Hash  \(cost=245.00..245.00 rows=10000 width=26\) \(actual time=23.122..23.122 rows=10000 loops=3\) |
+|                                 Buckets: 16384  Batches: 1  Memory Usage: 717kB |
+|                                 -&gt;  Seq Scan on "user" u2  \(cost=0.00..245.00 rows=10000 width=26\) \(actual time=16.984..21.829 rows=10000 loops=3\) |
+| Planning Time: 0.532 ms |
+| JIT: |
+|   Functions: 93 |
+|   Options: Inlining false, Optimization false, Expressions true, Deforming true |
+|   Timing: Generation 8.097 ms, Inlining 0.000 ms, Optimization 5.882 ms, Emission 44.183 ms, Total 58.162 ms |
+| Execution Time: 1150.066 ms |
+
+If you plug the plan into, e.g. Postgres Explain Visualizer, you get a nice output like [this](https://explain.dalibo.com/plan/dbg82a4289a2f8aa).
+Can you see how we could speed this query up? Suddenly, it becomes pretty obvious. We are not getting many index hits, right?
+
+Sure, this one is not so complex, but let's compare it with a visualization of the same thing:
+
+Use visualizers if available.
+e.g. EXPLAIN in postgres
 
 ### Clean up
 A few years ago, I was put in charge of an application. Right from the outset I heard complaints that it is slower than it used to be
@@ -91,15 +189,6 @@ by creating snapshot tables or materialized views (see Use subtables in OLAP (+ 
 keep in mind that your application's performance will gradually degrade. That does not always have to be a problem. If the accumulation
 is not too fast, the performance penalty may be something that you don't need to worry about for the lifespan of most applications.
 
-### Use diagnostic tools
-Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
-what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
-I think execution plan visualizers are of great help here. While I might struggle to find the source of issues in the textual plan, it is 
-often clear from the first look at the picture.
-Some database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
-
-Use visualizers if available.
-e.g. EXPLAIN in postgres
 
 ### WHERE to start
 Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen resulted from, often small, changes to filtering clause.
@@ -150,14 +239,6 @@ fine. Most often, such queries started out as more complex, and the sorting was 
 from some other column on the same line as our sorting column. Then, someone simplified but did not realize that
 instead of sorting they can use aggregation.
 Let's see how this can happen on an example: TODO
-
-### Database design
-
-A well-designed can save you a ton of troubles. While there are theoretical approaches that will lead you to the most
-logically consistent structure, you should consider think about the performance you need to.
-What data gets read and written the most, do you prefer to hold historical data or not having to sort to get the most recent snapshot.
-What datatypes you need etc.
-This is a much broader topic, and I hope to cover it in some of the following articles.
 
 ### Keep your queries simple
 If you can, keep your queries simple. You will make it easier for query planners to find and efficient query plan.
