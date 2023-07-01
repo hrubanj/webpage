@@ -9,17 +9,37 @@ categories: [programming, sql]
 Whether you are running a webpage, an analytic platform, or a data processing job, how you query your database crucially impacts how your application performs.
 In this article, we will look at some examples of optimization techniques that I use when database performance becomes an issue.
 I certainly don't know all the tricks out there. We will cover those that actually helped me solve problems in production applications in my several years of data engineering. 
-For now, we will focus only on tabular databases that support SQL as they are the most common group. 
+For now, we will focus only on tabular databases that support SQL–probably the most common group. Moreover, we will look primarily into techniques that don't require modifying the database.
 If you want to run the examples yourself, go to this (TODO: add link) repository and follow the README.
 
+### Tabular vs. relational
 We limited the scope of this post to 'tabular databases that support SQL'. Such a long-winded definition might seem unnecessary, so let's unpack it.
-Tabular databases are databases that store data in tables. SQL support means that we can use standard SQL (ANSI???) to query them.
-This is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relations. Generally, databases for
-analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular (e.g. CosmosDB).
-Yet another group uses tables as an underlying storage but does not support SQL queries (e.g. EdgeDB).
+Tabular databases store data in tables.
+By SQL support, we mean that we can use the structured query language to query them. We won't require that the database supports the full SQL standard, otherwise we might end up
+philosphizing whether any full ANSI compliant database exists. Unless stated otherwise, we will use the subset of SQL that is supported by most SQL-like databases.
+
+
+Tabular database is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relational constraints.
+Of course, nothing stops you from creating relations among datapoints even in non-relational databases, but relational databases will enforce them for you. E.g., they will
+not let you delete a user if they have any posts.
+Generally, databases for analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular.
+Here are some examples of major databases and their properties:
+
+| database                                                              | uses relations constraints | uses SQL | is tabular |
+|-----------------------------------------------------------------------|----------------------------|----------|------------|
+| [PostreSQL](https://www.postgresql.org/)                              | &check;                    | &check;  | &check;    |
+| [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-db) | &cross;                    | &check;  | &check;    |
+| [CosmosDB](https://learn.microsoft.com/en-us/azure/cosmos-db/)        | &cross;                    | &check;  | &cross;    |
+| [MongoDB](https://www.mongodb.com/)                                   | &cross;                    | &cross;  | &cross;    |
+
+
+As you probably noticed, we haven't covered all possible combinations. 
+For instance, there are databases that use tables as an underlying storage but does not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)), or
+databases that are tabular and relational but do not support SQL (e.g. [Dataphor](https://github.com/dataphor/Dataphor)).
+From my experience, most major databases fall into one of the categories in the table above.
 
 ### Premature optimization
-We started the article hinting that improving query performance can boost your applications significantly. But not always.
+We started the article hinting that improving query performance can boost your applications' performance. But not always.
 Is it a problem that a query takes ten minutes? What if it runs once a day, does not block any other queries, and processes terabytes of data? Maybe not a problem.
 What if it needs huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
 But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it a hundred times per second. Well...
@@ -27,13 +47,13 @@ Before you start optimizing, know the metric you need to improve. It can be clus
 Only then, you can actually decide what to optimize.
 
 Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more advantageous to get a larger database.
-On some occasions, your best option is to start tweaking SQL queries. And that is the fun part.
+On some occasions, your best option is to start tweaking SQL queries. And that is the fun part that we will deal with.
 
 ### Our toy dataset
-Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of users, posts,
-comments, and visits. The data is pseudo-randomly generated (see linked repository), and serves only for to show how to tweak queries.
-If you look into the data, you might discover some nonsensical patterns. We could avoid many of those by using a more
-nuanced data generation process with more constraints, but it is not necessary for our use case.
+Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of `users`, `posts`,
+`comments`, and `visits`. The data is pseudo-randomly generated (see [this repository](https://github.com/hrubanj/database-playground)), 
+and serves only for to show how to tweak queries.
+
 
 
 ### Horses for courses (OLAP vs. OLTP)
@@ -65,26 +85,26 @@ order by 1, 2
 ;
 ```
 In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
-But let us not get ahead of ourselves.
+But let's not get ahead of ourselves.
 
-Our examples will work either with Postgres or DuckDB. I am planning to add more database examples in the database playground repository in the future.
+Our examples will work either with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative, or [DuckDB](https://duckdb.org/),
+as an OLAP tool.
+I am planning to add more database examples in the database playground repository in the future. Currently, I am thinking of
+[Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some more realistic OLAP examples.
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
 This is usually because OLAP database try to be smarter—since they don't intend respond within milliseconds, they can take more time to optimize query execution.
-The positive of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
-optimizer might translate it to the same plan as the suboptimal one. After all, SQL is a declarative language (TODO: expand).
+The benefit of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
+optimizer might translate it to the same plan as the suboptimal one.
 
+### Isn't SQL declarative?
+You might have heard that SQL is a declarative language–you tell the database what you want, and it figures out how to get it.
+We will see that how you write your queries can have a substantial impact on performance. Some people argue that this
+means that SQl is not declarative, while others say that it is, but that the declarativness does not guarantee that the
+database will always choose the best plan, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
+about this on StackExchange. We won't delve into this here. We will demonstrate that how you write your queries
+impacts performance, and that is what matters.
 
-- Apache Druid
-- Clickhouse
-
-### Database design
-
-A well-designed can save you a ton of troubles. While there are theoretical approaches that will lead you to the most
-logically consistent structure, you should think about the performance you need to get.
-What data gets read and written the most, do you prefer to hold historical data or not having to sort to get the most recent snapshot.
-What datatypes you need etc.
-This article is primarily about optimizing queries when your database is already set up.
-I hope to write a separate article about database design in the future.
+TODO: checkpoint here
 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
@@ -227,9 +247,41 @@ easier job if they work with fewer data.
 
 On the other hand, a where clause that duplicates condition already included in a join might actually slow the query down.
 Let's compare these two queries:
+
+*Without extra condition in WHERE clause*
 ```sql
-TODO
+select u.name,
+       sum(c.upvotes_count) as total_upvotes
+from "user" u
+inner join comment c on u.id = c.user_id
+and c.time_created > '2022-01-01'::date
+group by 1
+order by 2 desc
+limit 10
+;
 ```
+This takes about 175.021 ms on my machine.
+Trying to add conditions to the where clause or move conditions from the join there slows the query down.
+(Try commenting and uncommenting the where clause or the join conditions in the query below to see the difference)
+```sql
+select u.name,
+       sum(c.upvotes_count) as total_upvotes
+from "user" u
+inner join comment c on u.id = c.user_id
+and c.time_created > '2022-01-01'::date
+where c.upvotes_count > 0
+and c.time_created > '2022-01-01'::date
+group by 1
+order by 2 desc
+limit 10
+;
+```
+We need to have a more complex query to get some benefit from putting (logically) unnecessary conditions to the where clause.
+```sql
+
+```
+
+
 The where clause duplicates a condition that is
 
 ### Aggregation vs. sorting
