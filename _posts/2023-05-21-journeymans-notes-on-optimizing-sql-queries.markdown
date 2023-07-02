@@ -104,16 +104,51 @@ database will always choose the best plan, regardless of how you write the query
 about this on StackExchange. We won't delve into this here. We will demonstrate that how you write your queries
 impacts performance, and that is what matters.
 
-TODO: checkpoint here
-
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
-to make sure that these assumptions are accurate. But you can still do better than them.
+to make sure that these assumptions work well in most situations. But you can still do better than them.
 While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
 be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
 
-TODO: example
+Suppose, we want to display the last five visits of our website:
+```sql
+with visits_ordered as (select *,
+                               row_number() over (order by timestamp desc) as order_desc
+                        from visit)
+select *
+from visits_ordered
+where order_desc < 6
+```
+This query is straightforward. We order the visits by timestamp, and then we select the first five. Since the dataset is small,
+it doesn't even take that long (around 1 second on my computer).
+If we know that out website visited regularly, we can make an assumption that the last five visits occurred, e.g. in the last 10 minutes, 1 day, or whatever seems reasonable.
+Then, we don't need to sort the whole table:
+```sql
+with visits_ordered as (select *,
+                               row_number() over (order by timestamp desc) as order_desc
+                        from visit
+                        where timestamp > '2022-10-10'::date)
+select *
+from visits_ordered
+where order_desc < 6
+;
+```
+This is about five times faster and gets us the same result.
+
+But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them.
+```sql
+with max_visit_id as (select max(id) max_id
+                      from visit)
+select *
+from visit v
+         inner join max_visit_id mvi
+                    on v.id > mvi.max_id - 5
+;
+```
+This is about 5 times faster than the previous version and 25 times faster than the original one.
+
+TODO: checkpoint here
 
 ### Use diagnostic tools
 Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
