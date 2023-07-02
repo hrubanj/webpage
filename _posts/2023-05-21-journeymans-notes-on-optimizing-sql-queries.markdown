@@ -113,42 +113,41 @@ Or you might know that a table includes duplicate join keys, so, you deduplicate
 
 Suppose, we want to display the last five visits of our website:
 ```sql
-with visits_ordered as (select *,
-                               row_number() over (order by timestamp desc) as order_desc
-                        from visit)
 select *
-from visits_ordered
-where order_desc < 6
+from visit
+order by timestamp desc
+limit 5
+;
 ```
 This query is straightforward. We order the visits by timestamp, and then we select the first five. Since the dataset is small,
-it doesn't even take that long (around 1 second on my computer).
+it doesn't even take that long (around 200 ms on my computer).
 If we know that out website visited regularly, we can make an assumption that the last five visits occurred, e.g. in the last 10 minutes, 1 day, or whatever seems reasonable.
 Then, we don't need to sort the whole table:
 ```sql
-with visits_ordered as (select *,
-                               row_number() over (order by timestamp desc) as order_desc
-                        from visit
-                        where timestamp > '2022-10-10'::date)
 select *
-from visits_ordered
-where order_desc < 6
+from visit
+where timestamp > '2022-10-10'::date
+order by timestamp desc
+limit 5
 ;
 ```
-This is about five times faster and gets us the same result.
+This is about twice as fast and gets us the same result.
 
 But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them.
 ```sql
-with max_visit_id as (select max(id) max_id
-                      from visit)
 select *
-from visit v
-         inner join max_visit_id mvi
-                    on v.id > mvi.max_id - 5
+from visit
+order by id desc
+limit 5
 ;
 ```
-This is about 5 times faster than the previous version and 25 times faster than the original one.
+This is about 80 times faster than the previous version and 160 times faster than the original one.
 
 TODO: checkpoint here
+TODO:
+Secret To Optimizing SQL Queries - Understand The SQL Execution Order
+https://www.youtube.com/watch?v=BHwzDmr6d7s
+- no functions on indexes, etc.
 
 ### Use diagnostic tools
 Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
