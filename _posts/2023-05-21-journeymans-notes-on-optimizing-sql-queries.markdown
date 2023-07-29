@@ -98,20 +98,20 @@ Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Post
 I am planning to add more database examples in the database playground repository in the future. Currently, I am thinking of
 [Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some more realistic OLAP examples.
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
-This is usually because OLAP database try to be smarter—since they don't intend respond within milliseconds, they can take more time to optimize query execution.
+This is usually because OLAP database try to be smarter—since they don't need to respond within milliseconds, they can take more time to optimize query execution.
 The benefit of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one.
 
-If you are interested in a more in-depth theoretical discussion of databases, I strongly recommend that you read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
+If you are interested in a more in-depth theoretical discussion of different database types, I strongly recommend that you read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
 It is by far the best book on (not only) databases that I have read so far.
 
 ### Isn't SQL declarative?
 You might have heard that SQL is a declarative language–you tell the database what you want, and it figures out how to get it.
 We will see that how you write your queries can have a substantial impact on performance. Some people argue that this
-means that SQl is not declarative, while others say that it is, but that the declarativity does not guarantee that the
+means that SQL is not declarative, while others say that it is, but that the declarativity does not guarantee that the
 database will always choose the best plan, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
-about this on StackExchange. We won't delve into this here. We will demonstrate that how you write your queries
-impacts performance, and that is what matters.
+about this on StackExchange. We won't delve into this here. Let's rather demonstrate that how you write your queries
+impacts performance.
 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
@@ -158,6 +158,7 @@ We will discuss indexes and their OLAP counterparts in a later section.
 ## What else is running on your database?
 Imagine that you wrote a query that is pretty fast and seems to work well. But when you run it in production, it
 suddenly starts to take ages or just hangs indefinitely. Why?
+
 There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it,
 or it might not have the same amount of resources available as in your test environment. Furthermore, your application
 might run the query several times in parallel, which, again, can starve the database of resources.
@@ -174,7 +175,7 @@ where state = 'active'
 This query is database-specific, so, you will need to consult docs to get its equivalent in other databases.
 
 ### Use diagnostic tools, particularly visualizers
-Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. 
+Databases usually have a way to display how they decided to execute your query, i.e. display the query plan. 
 Studying it can show you
 what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
 Sometimes, query plan will show you on what parts of the query you should focus, but on some occasions, you will see
@@ -251,23 +252,24 @@ If you plug the textual plan into, e.g. Postgres Explain Visualizer, you get a n
 
 Can you see how we could speed this query up? Suddenly, it becomes pretty obvious. We are not getting many index hits, right?
 
-____TODO: start here____
+
 ### Clean up
-A few years ago, I was put in charge of an application. Right from the outset I heard complaints that it is slower than it used to be
-and customers are upset. After some profiling, I realized that fetching data was the bottleneck. The application was supposed to 
-compute several metrics for products and what stroke me as odd was that there were a lot more products in the database than the company
-actually sold. Indeed, most products in the database were inactive. When I deleted them, the critical endpoint got 3 times faster.
+
+A few years back, I was asked to improve performance of an application that computed several metrics for products.
+Users complained that it has gotten slower over time. It quickly turned out that fetching data was the bottleneck–the actual computation
+took less then 5 % of the total endpoint response time.
+
+Strangely, there were tons of inactive products in the database, even though no one was interested in their metrics. 
+
+When I deleted them, the critical endpoint got 3 times faster.
+
 Deleting what you don't need is one of the easiest ways to speed up your queries. If you do not have automatic cleanup processes
 in place, data tends to pile up. Since the queries need to run through more data, they get slower.
-Delete obsolete data and setup processed that do it regularly for you.
-There will be data that you can't delete–for legal reasons or to not upset your users. Sometimes, you might get around this
-by creating snapshot tables or materialized views (see Use subtables in OLAP (+ Materialized views)). If that is not possible,
-keep in mind that your application's performance will gradually degrade. That does not always have to be a problem. If the accumulation
-is not too fast, the performance penalty may be something that you don't need to worry about for the lifespan of most applications.
 
+### WHERE to strike
+`WHERE` clause is often the first thing with which you should start playing. 
+The biggest improvements in query performance I have seen resulted from, often small, changes to the filtering conditions.
 
-### WHERE to start
-Start by fiddling with the `WHERE` clause. The biggest improvements in query performance I have ever seen resulted from, often small, changes to filtering clause.
 Let's look at an example query.
 ```sql
 select 
@@ -293,117 +295,238 @@ SQL query engines evaluate query parts in the following *logical* order:
 - `LIMIT` - limiting output rows
 
 The actual order in which the SQL engine evaluates clauses may differ, but it must ensure that if you
-write your query as if it used the logical order, it will not fail due to different execution order.
+write your query as if it used the logical order, it will not fail or give inconsistent results because of that.
+
 For example, we cannot get a zero division error in the query above even if the query engine decides
 to calculate `posts_per_second_active` before removing rows where `max(p.time_created) = min(p.time_created)`.
 
-In reality, the filtering (`WHERE` clause), or parts of it, might get executed even before tables are joined.
-`WHERE` clause reduces the amount of data we are working with from the start, and all subsequent steps have
-easier job if they work with fewer data.
+In reality, the `WHERE` clause, or parts of it, might get executed even before tables are joined.
+The `WHERE` clause reduces the amount of data we are working with from the start, and all subsequent steps have
+easier job if they work with less data.
 
-On the other hand, a where clause that duplicates condition already included in a join might actually slow the query down.
+On the other hand, a filtering clause that duplicates conditions already included in a join might actually slow queries down.
 Let's compare these two queries:
 
-*Without extra condition in WHERE clause*
+*Without an extra condition in the `WHERE` clause*
 ```sql
 select u.name,
        sum(c.upvotes_count) as total_upvotes
 from "user" u
 inner join comment c on u.id = c.user_id
-and c.time_created > '2022-01-01'::date
 group by 1
+having sum(c.upvotes_count) > 0
 order by 2 desc
 limit 10
 ;
 ```
-This takes about 175.021 ms on my machine.
-Trying to add conditions to the where clause or move conditions from the join there slows the query down.
-(Try commenting and uncommenting the where clause or the join conditions in the query below to see the difference)
+This takes about 218 ms on my machine.
+
+Trying to add conditions to the `WHERE` clause or move conditions from the join there slows the query down.
+(Try commenting and uncommenting the `WHERE` clause or the `HAVING` clause in the query below to see the difference)
 ```sql
 select u.name,
        sum(c.upvotes_count) as total_upvotes
 from "user" u
 inner join comment c on u.id = c.user_id
-and c.time_created > '2022-01-01'::date
 where c.upvotes_count > 0
-and c.time_created > '2022-01-01'::date
 group by 1
+having sum(c.upvotes_count) > 0
 order by 2 desc
 limit 10
 ;
 ```
-We need to have a more complex query to get some benefit from putting (logically) unnecessary conditions to the where clause.
+We need a more complex query to get some benefit from putting logically unnecessary conditions to the `WHERE` clause.
+
+Admittedly, this example is a bit convoluted: suppose we want to get a ranked list of users that visited our website (not necessarily the post itself) in 30 days
+after a post was created.
+
 ```sql
-
+select p.id                                                             as post_id,
+       v.id                                                             as visit_id,
+       p.user_id                                                        as poster_id,
+       v.user_id                                                        as visitor_id,
+       u1.name                                                          as poster_name,
+       u2.name                                                          as poster_name,
+       row_number() over (partition by p.id, v.id order by v.timestamp) as rn
+from post p
+         inner join "visit" v on v.timestamp between p.time_created and p.time_created + interval '30 days'
+         inner join "user" u1 on u1.id = p.user_id
+         inner join "user" u2 on u2.id = v.user_id
+where p.time_created > '2023-01-01'
+  and v.timestamp > '2023-01-01'
+;
 ```
+As you can see, the `v.timestamp > '2023-01-01'` condition is not necessary as the inner join guarantees that `v.timestamp >= p.time_created` and `p.time_created > '2023-01-01'`
+is already in the `WHERE` clause.
 
+Yet, adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 20 % on my machine.
 
-The where clause duplicates a condition that is
 
 ### Aggregation vs. sorting
 Sorting is expensive. If you can, you should probably avoid it.
-I've seen quite a lot of code that sorts table only to get a maximum of some column, i.e. where simple group by would work
-fine. Most often, such queries started out as more complex, and the sorting was originally necessary to get values
-from some other column on the same line as our sorting column. Then, someone simplified but did not realize that
-instead of sorting they can use aggregation.
-Let's see how this can happen on an example: TODO
+I've seen quite a lot of code that sorts table only to get a maximum of some column, i.e. where simple group by would suffice.
+Most often, such queries started out as more complex, and the sorting was originally necessary.
 
-### Keep your queries simple
-If you can, keep your queries simple. You will make it easier for query planners to find and efficient query plan.
-Snowflake actually recommends exactly this—use simple queries and let the query planner do its job.
-Of course, this is often easier said then done. You might actually need a more complex transformation, and it is not possible
-to get the required data in a simple query. In such cases, Snowflake recommends using sub-tables (TODO: add source). These do come with
-a danger of sacrificing data integrity, however. Moreover, in OLTP databases, you often can't afford to copy tons of data back and forth,
-not to mention work with outdated data. Let's look at the alternatives, you have, if you want to keep you queries simple, but you need to
-transform data in a non-trivial way.
+Let's see this on an example.
+```sql
+select id,
+       timestamp
+from visit
+order by timestamp desc
+limit 1
+;
+```
+Later, someone decides that it is enough to return the latest timestamp, so, they remove it from the query.
+```sql
+select timestamp
+from visit
+order by timestamp desc
+limit 1
+;
+```
+
+What is wrong here? The query still sorts the whole table, even though we just need to compute maximum of one column.
+```
+select max(timestamp) as time_updated
+from visit
+;
+```
+This does the same thing, is more memory efficient, and about 50 % faster. On a large table, the speed difference will be even more pronounced.
+
+This example is so simplistic that it is hard to overlook the problem. However, once you start looking for this pattern, you spot it more often than you'd expect.
+
 
 ### Subqueries
-Subqueries and common table expressions (CTEs) are often necessary unless you decide to create a temporary table or  view.
-Occasionally, they are useful even if you could theoretically avoid them. For example, instead of performing complicated cross join
+You should always keep your queries as simple as possible, but sometimes the business logic cannot be expressed without nesting.
+Unless you decide to create a temporary table or  view, subqueries and common table expressions (CTEs) are inevitable.
+Occasionally, they are useful even if you can avoid them. For example, instead of performing complicated cross join
 and filtering its results, you may be better off de-duplicating tables first, and then joining them without having to filter the result.
-The caveats are: query planner might be smart enough to optimize the original (non-nested) query, and using subqueries can actually
-confuse it. Hence, this is something you have to test—there is not theoretical rule that will reliably tell whether using subquery is
+
+Be careful though–the query planner might be smart enough to optimize the original (non-nested) query, 
+and using subqueries can actually complicate its work.
+
+Hence, this is something you have to test. There is not theoretical rule that will reliably tell you whether using subquery is
 a good idea in particular case. What usually works for me is checking the size of the table in subquery before and after applying
 the subquery filter. If it is large and becomes significantly smaller after filtering, putting the filter into subquery might work.
 Otherwise, it usually won't.
-Let's explore when subqueries help with some examples.
-TODO: add examples where subqueries work and where they harm
 
-### Use subtables in OLAP (+ Materialized views)
+Let's have a query that selects all posts that were update in the 30 days after Alice Vaughan posted her post.
+```sql
+with temp_alice_post as (
+    select *
+    from post p
+    inner join "user" u on p.user_id = u.id
+    where u.name = 'Alice Vaughan'
+)
+select *
+from temp_alice_post p1
+inner join "user" u on p1.user_id = u.id
+inner join post p2
+on p2.time_updated between p1.time_created and p1.time_created + interval '30 days'
+;
+```
+Filtering via CTE might seem like a good idea–we are reducing the `post` table to a small subset.
+
+```sql
+select *
+from post p1
+inner join "user" u on p1.user_id = u.id
+inner join post p2
+on p2.time_updated between p1.time_created and p1.time_created + interval '30 days'
+where u.name = 'Alice Vaughan'
+;
+```
+However, an experiment shows that the version without CTE is actually faster.
+
+Let's try another example. We want to get names of people who visited our site more than 100 times.
+A straightforward query to do this would be:
+```sql
+select u.name
+from "user" u
+inner join visit on u.id = visit.user_id
+group by 1
+having count(*) > 100
+order by 1
+;
+```
+But there is a actually a faster way to do this, despite being a bit uglier:
+```sql
+with temp_frequent_visitors as (select user_id
+                                from visit
+                                group by 1
+                                having count(*) > 100)
+select u.name
+from "user" u
+inner join temp_frequent_visitors tfv on u.id = tfv.user_id
+order by u.name
+;
+```
+On my computer, the second query runs about 30 % faster.
+
+### Use derived tables in OLAP (+ Materialized views)
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
-These boastful suffixes usually indicate that it is just the original order table with a few columns joined from another table.
-I've seen hardcore programmers cry in pain when they heard of such duplication and violation of data integrity.
+These boastful suffixes usually indicate that the order_**suffix** is just the original **order** table with a few columns joined from another table.
+I've seen hardcore programmers cry in pain when they heard of such crimes against the laws of data modelling.
 The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
 
-Subtable is not an official term. TODO: explain  / maybe use derived table instead
-
 Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
-which is exactly what the order_advanced table gives them. Of course, they could join the transportation costs themselves
-but that might make they query too slow, and they would need to duplicate the joining code creating a potential for mistakes.
-If they don't expect near real-time data, the inconsistency is not such a big problem. I.e. they cannot expect to join order data
-to, for example, website traffic data for today, and expect a reliable result. If the order_advanced is refreshed once a day, they should just discard today's data.
+which is exactly what the `order_advanced` table provides. Of course, they could join the transportation costs themselves
+but that would slow down their queries, and they would need to duplicate the joining code creating a potential for mistakes.
+Of courser, the data in this table will not reflect production at every point in time.
+But if analysts don't expect near real-time data, the partial inconsistency between actual production data and analytical datasets does not have to be a problem.
 
-Another case where you might reach for a subtable is an OLAP job. Instead of crafting complicated nested queries, you just create
+Let us call tables that hold only data contained in other tables 'derived tables'.
+
+Another case where you might reach for such derived is an OLAP job. Instead of crafting complicated nested queries, you just create
 temporary table simplifying query planner's job, and delete them when transformation finished.
 
-A better alternative to non-temporary subtable is a materialized view, which is basically a table that knows how to
+A better alternative to a non-temporary derived is a materialized view, which is basically a table that knows how to
 refresh its data. Materialized view is read-only—you can write only to underlying tables. On refresh, it runs the queries
 by which it was created.
 However, making sure that the refresh happens when it should is a discipline of its own. (I might write another article on that).
-The difference between view and materialized view is that materialized view runs queries on refresh, and holds the data,
-i.e. it is a 'derived table', whereas normal view runs its queries when you query the view.
 
-I would argue that using a materialized view is better than using persistent subtables. Materialized view clearly indicates
-that is read only and can be refreshed with one command.
+Be aware of the difference between view and materialized view. Materialized view runs queries on refresh, and holds the data,
+i.e. it is a kind of 'derived table', whereas normal view runs its queries when you query the it and does not hold any data.
 
-On the other hand, you might have good reasons to use subtables, e.g.,  for compatibility with exporters to other systems
+I would argue that using a materialized view is better than using persistent derived tables. Materialized view clearly indicates
+that is read only and can be refreshed with one command and saves you from sending a long query to the server every time you want
+to refresh it.
+
+On the other hand, you might have good reasons to use derived tables, e.g.,  for compatibility with exporters to other systems
 or to make sure that your code lives somewhere else and not in the database.
 
-Some examples where materialized view can help: TODO
+Apart from the column-adding transformations mentioned above, a good use case for a materialized view might be
+something like this:
+```sql
+with  temp_total_post_visits as (select post_id,
+                                        count(*) as visits_count
+                                 from visit
+                                 group by 1),
+    temp_recent_post_visits as (select post_id,
+                                       count(*) as visits_count
+                                from visit
+                                where timestamp + interval '3 days' > (select max(timestamp) from visit)
+                                group by 1
+                                       )
+select
+    u.name,
+    max(coalesce(trpv.visits_count / ttpv.visits_count, 0)) as recent_visits_share
+from temp_total_post_visits ttpv
+inner join post p on ttpv.post_id = p.id
+inner join "user" u on p.user_id = u.id
+left join temp_recent_post_visits trpv on ttpv.post_id = trpv.post_id
+where trpv.visits_count / ttpv.visits_count > 0.1
+  and trpv.visits_count > 3
+group by 1
+order by 2 desc
+limit 100
+;
+```
+This query creates a leaderboard of trending posters. We might want to display it to our users on their home page.
+So, recomputing all aggregations on every home page refresh might be too expensive. Instead, we can create a materialized view,
+and refresh it, e.g., once every ten minutes.
 
-The same thing with subtable TODO:
-
-
+__TODO:__ continue here
 ### Indices, clustering keys, partitioning keys
 
 TODO:
@@ -426,10 +549,10 @@ will ideally create chunks that cover mutually exclusive time intervals of `upda
 Hitting a clustering or partitioning key amounts to similar jackpot as hitting an index—the database needs to process
 only the partition with the key. If you do not hit the key, it needs to check all partitions.
 
-Clustering or partitioning is primarily useful on larger tables (think > 1TB); with smaller ones, the overhead of shuffling data
+Clustering or partitioning is primarily useful on larger tables (think > 1 TB); with smaller ones, the overhead of shuffling data
 might not be worth it. If you are paying for the time that database does something, as in Snowflake, you should also consider
-that partitioning large table takes a lot of time and needs to happen regularly, otherwise the partitions won't be balanced,
-which will worsen query performance.
+that partitioning large table takes a lot of time and needs to happen regularly, otherwise the partitions won't be balanced
+its benefits will fade.
 
 TODO: examples of both indices and partitioning
 
@@ -445,7 +568,7 @@ If you are not sure whether to use explicit plan hinting, don't.
 
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
 by removing an unnecessary join.
-The query was supposed to extract the first content block of articles published on the website (TODO: possibly reproduce) and it looked like this:
+The query was supposed to extract the first content block of articles published on the website and it looked like this:
 ```sql
 select e2.id,
        mac.field_module_text,
@@ -462,7 +585,7 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-It was a subquery in a larger query, but I will not copy the whole thing here as it would be hard to see the important parts.
+This was a subquery in a larger query, but I will not copy the whole thing here as it would be hard to see the important parts.
 
 While refactoring the code, I realized that the `handle` column is not used anywhere, so, I removed it. The output no longer included any data from the `entrytypes` table.
 You might think that the `entrytypes` table still did some filtering since we are performing inner join. But it does not filter anything, even though you cannot see it from the query alone.
@@ -484,10 +607,10 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-The execution time went from roughly 300 ms to 51 s. I was not happy.
+The execution time went from roughly 300 ms to 51 s and I was not happy.
 When I kept the join there, the performance remained similar to the original.
 I took the subquery out and started looking into it, but then came another surprise—in isolation, the execution time did not worsen without the join.
-It turned out that when it was a part of a larger query, the join provided some kind of hint to the query optimized, and it chose a better plan.
+It turned out that when it was a part of a larger query, the join gave a hint to the query optimizer, and it chose a better plan.
 TODO: dissect query plan
 So, I ended up with seemingly nonsensical query:
 ```sql
@@ -509,6 +632,8 @@ I am not suggesting that you should go crazy adding unnecessary joins to your qu
 But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
 ### Always validate that your solution works in production
+I might get burned at the stake for writing this, but it has to be: you have to test in production. Not only in production, not primarily in production,
+but testing only in a staging environment won't cut it.
 TODO: explain that even with the same data, same database version, and similar machine, different query plan can be used
 
 ### Conclusion: Question and experiment
