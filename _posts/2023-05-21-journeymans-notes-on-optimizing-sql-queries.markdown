@@ -523,7 +523,7 @@ limit 100
 ;
 ```
 This query creates a leaderboard of trending posters. We might want to display it to our users on their home page.
-So, recomputing all aggregations on every home page refresh might be too expensive. Instead, we can create a materialized view,
+Recomputing all aggregations on every home page refresh might be too expensive. Instead, we can create a materialized view,
 and refresh it, e.g., once every ten minutes.
 
 __TODO:__ continue here
@@ -631,10 +631,11 @@ where e."dateDeleted" is null
 I am not suggesting that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
 But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
-### Always validate that your solution works in production
+### Test in production
 I might get burned at the stake for writing this, but it has to be: you have to test in production. Not only in production, not primarily in production,
 but testing only in a staging environment won't cut it.
 TODO: explain that even with the same data, same database version, and similar machine, different query plan can be used
+Explain how I killed production DB by a query that took 2 seconds on my computer.
 
 ### Conclusion: Question and experiment
 Linear thinking won't always get you there. Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
