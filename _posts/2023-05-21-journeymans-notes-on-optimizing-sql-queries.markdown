@@ -7,36 +7,43 @@ categories: [programming, sql]
 ### Introduction
 
 Whether you are running a webpage, an analytic platform, or a data processing job, how you query your database crucially impacts how your application performs.
+
 In this article, we will look at some examples of optimization techniques that I use when database performance becomes an issue.
 I certainly don't know all the tricks out there. We will cover those that actually helped me solve problems in production applications in my several years of data engineering. 
 For now, we will focus only on tabular databases that support SQL–probably the most common group. Moreover, we will look primarily into techniques that don't require modifying the database.
-If you want to run the examples yourself, go to this (TODO: add link) repository and follow the README.
+
+If you want to run the examples yourself, go to [this](https://github.com/hrubanj/database-playground) repository and follow the README.
+
 
 ### Tabular vs. relational
 We limited the scope of this post to 'tabular databases that support SQL'. Such a long-winded definition might seem unnecessary, so let's unpack it.
+
 Tabular databases store data in tables.
-By SQL support, we mean that we can use the structured query language to query them. We won't require that the database supports the full SQL standard, otherwise we might end up
+By SQL support, we mean that we can use the structured query language to query them.
+
+We won't require that the database supports the full SQL standard, otherwise we might end up
 philosphizing whether any full ANSI compliant database exists. Unless stated otherwise, we will use the subset of SQL that is supported by most SQL-like databases.
 
 
 Tabular database is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relational constraints.
 Of course, nothing stops you from creating relations among datapoints even in non-relational databases, but relational databases will enforce them for you. E.g., they will
-not let you delete a user if they have any posts.
+not let you delete a `user` if they have any `posts`.
 Generally, databases for analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular.
 Here are some examples of major databases and their properties:
 
 | database                                                              | uses relations constraints | uses SQL | is tabular |
 |-----------------------------------------------------------------------|----------------------------|----------|------------|
-| [PostreSQL](https://www.postgresql.org/)                              | &check;                    | &check;  | &check;    |
-| [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-db) | &cross;                    | &check;  | &check;    |
-| [CosmosDB](https://learn.microsoft.com/en-us/azure/cosmos-db/)        | &cross;                    | &check;  | &cross;    |
-| [MongoDB](https://www.mongodb.com/)                                   | &cross;                    | &cross;  | &cross;    |
+| [PostreSQL](https://www.postgresql.org/)                              | ✅                          | ✅        | ✅          |
+| [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-db) | ❌                          | ✅        | ✅          |
+| [CosmosDB](https://learn.microsoft.com/en-us/azure/cosmos-db/)        | ❌                          | ✅        | ❌          |
+| [MongoDB](https://www.mongodb.com/)                                   | ❌                          | ❌        | ❌          |
 
 
 As you probably noticed, we haven't covered all possible combinations. 
-For instance, there are databases that use tables as an underlying storage but does not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)), or
+For instance, there are databases that use tables as an underlying storage but do not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)), or
 databases that are tabular and relational but do not support SQL (e.g. [Dataphor](https://github.com/dataphor/Dataphor)).
 From my experience, most major databases fall into one of the categories in the table above.
+
 
 ### Premature optimization
 We started the article hinting that improving query performance can boost your applications' performance. But not always.
@@ -87,8 +94,7 @@ order by 1, 2
 In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
 But let's not get ahead of ourselves.
 
-Our examples will work either with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative, or [DuckDB](https://duckdb.org/),
-as an OLAP tool.
+Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative..
 I am planning to add more database examples in the database playground repository in the future. Currently, I am thinking of
 [Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some more realistic OLAP examples.
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
@@ -96,10 +102,13 @@ This is usually because OLAP database try to be smarter—since they don't inten
 The benefit of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one.
 
+If you are interested in a more in-depth theoretical discussion of databases, I strongly recommend that you read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
+It is by far the best book on (not only) databases that I have read so far.
+
 ### Isn't SQL declarative?
 You might have heard that SQL is a declarative language–you tell the database what you want, and it figures out how to get it.
 We will see that how you write your queries can have a substantial impact on performance. Some people argue that this
-means that SQl is not declarative, while others say that it is, but that the declarativness does not guarantee that the
+means that SQl is not declarative, while others say that it is, but that the declarativity does not guarantee that the
 database will always choose the best plan, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
 about this on StackExchange. We won't delve into this here. We will demonstrate that how you write your queries
 impacts performance, and that is what matters.
@@ -133,7 +142,7 @@ limit 5
 ```
 This is about twice as fast and gets us the same result.
 
-But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them.
+But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them. The `id` columns is a primary key, so, it is indexed.
 ```sql
 select *
 from visit
@@ -143,27 +152,37 @@ limit 5
 ```
 This is about 80 times faster than the previous version and 160 times faster than the original one.
 
-TODO: checkpoint here
-TODO:
-Secret To Optimizing SQL Queries - Understand The SQL Execution Order
-https://www.youtube.com/watch?v=BHwzDmr6d7s
-- no functions on indexes, etc.
+We will discuss indexes and their OLAP counterparts in a later section.
 
-### Use diagnostic tools
-Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. Studying it can show you
+
+## What else is running on your database?
+Imagine that you wrote a query that is pretty fast and seems to work well. But when you run it in production, it
+suddenly starts to take ages or just hangs indefinitely. Why?
+There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it,
+or it might not have the same amount of resources available as in your test environment. Furthermore, your application
+might run the query several times in parallel, which, again, can starve the database of resources.
+Always try to test the scenario that is closest to production. If the query is supposed to run 50 times in parallel,
+run it 100 times in parallel to make sure that the database can handle it.
+
+In postgres, you can list active queries with this command:
+```sql
+select *
+from pg_stat_activity
+where state = 'active'
+;
+```
+This query is database-specific, so, you will need to consult docs to get its equivalent in other databases.
+
+### Use diagnostic tools, particularly visualizers
+Databases usually have a way to show you how they decided to execute your query, i.e. display the query plan. 
+Studying it can show you
 what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
 Sometimes, query plan will show you on what parts of the query you should focus, but on some occasions, you will see
 that the query plan is clearly suboptimal given your data–for example if order of joins is such that most data is filtered out 
-at the end. In the latter case, you might try to push query planner into picking a better plan.
-You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
-the optimal plan. I try to stay away from the first option–unless the distribution of data is very stable, you can shoot yourself in
-the foot by committing to a specific query plan and not letting the optimizer decide it dynamically. By plan hinting in Postgres,
-you are effectively disabling its optimizer. Normally, Postgres' optimizer is cost-based as probably in most databases.
-It estimates costs of different possible plans and selects the cheapest, but if we use hints, we restrict its freedom of choice.
-There are certainly situations when plan hinting is the best strategy, but, from my experience, they are extremely rare.
+at the end. In the latter case, you might try to push query planner into picking a better plan (see the section on Hinting).
 
-
-I think execution plan visualizers are great. While I might struggle to find the source of issues in the textual plan, it is 
+I think execution plan visualizers are the most useful optimization tool.
+While you might struggle to find bottlenecks in the textual plan, it is 
 often clear from the first look at the picture.
 Some SAAS database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
 
@@ -222,14 +241,17 @@ This is the query plan output by Postgres:
 |   Timing: Generation 8.097 ms, Inlining 0.000 ms, Optimization 5.882 ms, Emission 44.183 ms, Total 58.162 ms |
 | Execution Time: 1150.066 ms |
 
-If you plug the plan into, e.g. Postgres Explain Visualizer, you get a nice output like [this](https://explain.dalibo.com/plan/dbg82a4289a2f8aa).
+Sure, this query is not complex, so, reading the query plan is pretty straightforward once you get used to it.
+
+But let's compare it to the visualization of the same thing:
+
+![]({{ site.baseurl }}/assets/images/query_visualization.png)
+
+If you plug the textual plan into, e.g. Postgres Explain Visualizer, you get a nice [output](https://explain.dalibo.com/plan/dbg82a4289a2f8aa) like the above.
+
 Can you see how we could speed this query up? Suddenly, it becomes pretty obvious. We are not getting many index hits, right?
 
-Sure, this one is not so complex, but let's compare it with a visualization of the same thing:
-
-Use visualizers if available.
-e.g. EXPLAIN in postgres
-
+____TODO: start here____
 ### Clean up
 A few years ago, I was put in charge of an application. Right from the outset I heard complaints that it is slower than it used to be
 and customers are upset. After some profiling, I realized that fetching data was the bottleneck. The application was supposed to 
@@ -384,6 +406,11 @@ The same thing with subtable TODO:
 
 ### Indices, clustering keys, partitioning keys
 
+TODO:
+Secret To Optimizing SQL Queries - Understand The SQL Execution Order
+https://www.youtube.com/watch?v=BHwzDmr6d7s
+- no functions on indexes, etc.
+
 You definitely want to hit an index. Indices are the most common tool databases give you to speed up fetching or filtering records.
 When your query hits an index, database does not need to scan the whole table, and this needs to read much fewer data.
 Indices work primarily in OLTP databases.
@@ -407,6 +434,15 @@ which will worsen query performance.
 TODO: examples of both indices and partitioning
 
 ### Hinting
+Hinting is a way to tell the query planner how to execute the query.
+You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
+the optimal plan. I try to stay away from the first option–unless the distribution of data is very stable, you can shoot yourself in
+the foot. 
+By explicit plan hinting in Postgres, you are effectively disabling its optimizer.
+Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest, but if you use hints, you restrict its freedom of choice.
+There are certainly situations when plan hinting is the best strategy, but, from my experience, they are rare.
+If you are not sure whether to use explicit plan hinting, don't. 
+
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
 by removing an unnecessary join.
 The query was supposed to extract the first content block of articles published on the website (TODO: possibly reproduce) and it looked like this:
