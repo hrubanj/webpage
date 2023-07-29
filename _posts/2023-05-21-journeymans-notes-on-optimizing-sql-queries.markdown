@@ -58,10 +58,8 @@ On some occasions, your best option is to start tweaking SQL queries. And that i
 
 ### Our toy dataset
 Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of `users`, `posts`,
-`comments`, and `visits`. The data is pseudo-randomly generated (see [this repository](https://github.com/hrubanj/database-playground)), 
-and serves only for to show how to tweak queries.
-
-
+`comments`, and `visits`. The data are pseudo-randomly generated (see [this repository](https://github.com/hrubanj/database-playground)).
+The tables are not very large, but they are large enough to demonstrate most techniques we will discuss.
 
 ### Horses for courses (OLAP vs. OLTP)
 Are you working with the right type of database?
@@ -463,7 +461,7 @@ order by u.name
 ```
 On my computer, the second query runs about 30 % faster.
 
-### Use derived tables in OLAP (+ Materialized views)
+### Use materialized views
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
 These boastful suffixes usually indicate that the order_**suffix** is just the original **order** table with a few columns joined from another table.
 I've seen hardcore programmers cry in pain when they heard of such crimes against the laws of data modelling.
@@ -607,7 +605,7 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-The execution time went from roughly 300 ms to 51 s and I was not happy.
+The execution time went from roughly 300 ms to 51 seconds, and I was not happy.
 When I kept the join there, the performance remained similar to the original.
 I took the subquery out and started looking into it, but then came another surprise—in isolation, the execution time did not worsen without the join.
 It turned out that when it was a part of a larger query, the join gave a hint to the query optimizer, and it chose a better plan.
