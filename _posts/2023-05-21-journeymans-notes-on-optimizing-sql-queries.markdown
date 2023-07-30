@@ -598,16 +598,15 @@ the benefits. I'll try to create such examples in the [accompanying repository](
 ___TODO__: check point here
 Hinting is a way to tell the query planner how to execute the query.
 You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
-the optimal plan. I try to stay away from the first option–unless the distribution of data is very stable, you can shoot yourself in
-the foot. 
-By explicit plan hinting in Postgres, you are effectively disabling its optimizer.
+the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in
+the foot. By explicit plan hinting in Postgres, you are interfering with its optimizer.
 Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest, but if you use hints, you restrict its freedom of choice.
 There are certainly situations when plan hinting is the best strategy, but, from my experience, they are rare.
 If you are not sure whether to use explicit plan hinting, don't. 
 
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
-by removing an unnecessary join.
-The query was supposed to extract the first content block of articles published on the website and it looked like this:
+by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example.
+The query extracts the first content block of articles published on the website and it looked like this:
 ```sql
 select e2.id,
        mac.field_module_text,
@@ -646,11 +645,11 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-The execution time went from roughly 300 ms to 51 seconds, and I was not happy.
+The execution time went from roughly 200 ms to 2 seconds, and I was not happy.
 When I kept the join there, the performance remained similar to the original.
-I took the subquery out and started looking into it, but then came another surprise—in isolation, the execution time did not worsen without the join.
+I took the subquery out and started looking into it, but then came another surprise. In isolation, the execution time did not worsen without the join.
 It turned out that when it was a part of a larger query, the join gave a hint to the query optimizer, and it chose a better plan.
-TODO: dissect query plan
+
 So, I ended up with seemingly nonsensical query:
 ```sql
 select e2.id,
@@ -667,21 +666,36 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-I am not suggesting that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
+The sad ending to this story is that I was not able to discover the reason for the difference.
+When I tried to analyze the query plan, suddenly, both version became similarly fast.
+I did not go as far as trying to run analyze on the production database, as it might not end up well.
+
+The moral of the story is not that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
 But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
-### Test in production
-I might get burned at the stake for writing this, but it has to be: you have to test in production. Not only in production, not primarily in production,
+### Validate in production
+I might get burned at the stake for writing this: you have to test in production. Not only in production, not primarily in production,
 but testing only in a staging environment won't cut it.
-TODO: explain that even with the same data, same database version, and similar machine, different query plan can be used
-Explain how I killed production DB by a query that took 2 seconds on my computer.
+
+Not so long ago, I almost destroyed a production database by running a query that took 2 seconds to execute on my computer.
+It took around 7 seconds on staging database. Both my computer, staging and production were running the same version of Postgres.
+
+Furthermore, the staging database had the same data as production but was running on a bit weaker machine. It was only logical to assume that in production,
+the query would run for slightly less than 7 seconds. Worst case scenario, it would take 30 seconds if there's a lot of other queries running.
+
+Wrong! It didn't take 7 or 30 seconds. In fact, it failed to finish at all. The production database apparently chose a different query plan,
+and almost committed suicide.
+
+The takeaway is that even if your query is thoroughly tested on staging, you should not make too strong assumptions about its performance in production.
+You just have to try it.
 
 ### Conclusion: Question and experiment
-Linear thinking won't always get you there. Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
-choose the most efficient functions, measure changes, and repeat.
+Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
+choose the most efficient functions, measure changes, and repeat. We have covered some of them, and there are is a lot more to try.
 But sometimes, queries will be slow, no matter how much love and care you give them.
 
 Then, you have to think more broadly. Can you get the data from somewhere else, split the query into parts, or redefine the database structure?
 Do you actually need to return all data in this query? Who uses it? What for?
 
-Always question your assumptions. Don't be afraid to trust your gut and try crazy things. This is more of a general life advice, so, we might as well end the article here.
+Always question your assumptions. Don't feel foolish if you follow some illogical hunch. Your instincts will get better over time.
+This is more of a general life advice, so, we might as well end the article here.
