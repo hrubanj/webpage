@@ -524,37 +524,78 @@ This query creates a leaderboard of trending posters. We might want to display i
 Recomputing all aggregations on every home page refresh might be too expensive. Instead, we can create a materialized view,
 and refresh it, e.g., once every ten minutes.
 
-__TODO:__ continue here
 ### Indices, clustering keys, partitioning keys
 
-TODO:
-Secret To Optimizing SQL Queries - Understand The SQL Execution Order
-https://www.youtube.com/watch?v=BHwzDmr6d7s
-- no functions on indexes, etc.
-
-You definitely want to hit an index. Indices are the most common tool databases give you to speed up fetching or filtering records.
-When your query hits an index, database does not need to scan the whole table, and this needs to read much fewer data.
-Indices work primarily in OLTP databases.
+If your query hits an index, you are in luck. Indices are the most common tool databases give you to speed up fetching or filtering records.
+When your query hits an index, the database does not need to scan the whole table, and thus needs to read much fewer data.
+Indices work primarily in OLTP databases. Ideally, you should directly compare against the index values in the `WHERE` clause or join
+and not use functions on the indexed columns. If you do, the database might not be able to use the index.
+[This](https://www.youtube.com/watch?v=BHwzDmr6d7s) video provides a nice illustration.
 
 Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
-that this creates a unique index as a well-behaved database would do. Instead, it only adds a non-null constraint on the columns.
-Snowflake says in their documentation that they use indices mainly as a documentation feature, but I am sure I was not the
-only person who was confused by duplicates in a primary key column.
+that this enforces uniqueness as a well-behaved database would do. It doesn't.
+
+Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview) 
+that they use constraints mainly as a documentation feature. I am quite sure
+this has confused many people. Seeing duplicates in a primary key column certainly confused me.
 
 In OLAP databases, you might encounter clustering, partitioning, or some other keys. These are columns that usually divide table into
 chunks. If we take our `post` table from previous examples and set clustering key to `updated_at`, the database
-will ideally create chunks that cover mutually exclusive time intervals of `updated_at` (TODO: check). 
-Hitting a clustering or partitioning key amounts to similar jackpot as hitting an index—the database needs to process
-only the partition with the key. If you do not hit the key, it needs to check all partitions.
+will ideally create chunks that cover mutually exclusive time intervals of `updated_at` . 
+When your query hits a clustering or partitioning key, the database can skip all chunks that do not contain the key. 
+If you do not hit the key, it needs to check all partitions.
+
+If you decide to partition, you should choose a column that you often use to filter it. Often, databases will let you define just one
+partition column, e.g. [BigQuery](https://cloud.google.com/bigquery/docs/partitioned-tables).
+In practice, people often partition by insertion date in append-only tables. This makes sense because if data grows
+in a reasonably similar pace in time, and you usually need to work with data for certain time period.
+
+Clustering keys, for example in [Snowflake](https://docs.snowflake.com/en/user-guide/tables-clustering-keys, 
+are more flexible. You can define clustering key on multiple columns.
 
 Clustering or partitioning is primarily useful on larger tables (think > 1 TB); with smaller ones, the overhead of shuffling data
 might not be worth it. If you are paying for the time that database does something, as in Snowflake, you should also consider
-that partitioning large table takes a lot of time and needs to happen regularly, otherwise the partitions won't be balanced
-its benefits will fade.
+that clustering large table takes a lot of time and needs to happen regularly, otherwise the chunks won't be balanced
+their benefits will fade.
 
-TODO: examples of both indices and partitioning
+Indices are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up space
+and slows down writes.
+
+Let's see how we can speed up a very simple query by adding a very simple index. Suppose, we want to count posts created
+during a certain time period.
+```sql
+select count(*) as post_count
+from post
+where time_created between '2021-01-01' and '2021-12-31' -- we could parametrize the dates if we wanted
+;
+```
+This takes about 100 ms on my computer. That might be great or terrible depending on the context. Let's suppose it is
+too slow for you use case, e.g., we need to run this query hundreds times per second and get the results quickly.
+
+The `time_created` column is not indexed, so, the database needs to do a table scan.
+Let's change that:
+```sql
+create index post_time_created_idx on post(time_created)
+;
+```
+Now, we are at 10 ms, so 10 times speedup. The database needs to do index-only scan. Since we care only about the number
+of rows, it does not need to read any data from the table.
+
+But even a query that needs to read some data, will be made faster by an index.
+```sql
+select count(distinct user_id) as post_count
+from post
+where time_created between '2021-01-01' and '2021-12-31'
+;
+```
+This takes about 100 ms without the index on `time_created` and about 40 ms with it.
+
+I will not show examples with clustering or partitioning keys now, because we would need to generate a lot more data to see
+the benefits. I'll try to create such examples in the [accompanying repository](https://github.com/hrubanj/database-playground) later.
 
 ### Hinting
+
+___TODO__: check point here
 Hinting is a way to tell the query planner how to execute the query.
 You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
 the optimal plan. I try to stay away from the first option–unless the distribution of data is very stable, you can shoot yourself in
