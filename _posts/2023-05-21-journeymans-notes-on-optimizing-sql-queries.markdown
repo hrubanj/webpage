@@ -550,7 +550,7 @@ partition column, e.g. [BigQuery](https://cloud.google.com/bigquery/docs/partiti
 In practice, people often partition by insertion date in append-only tables. This makes sense because if data grows
 in a reasonably similar pace in time, and you usually need to work with data for certain time period.
 
-Clustering keys, for example in [Snowflake](https://docs.snowflake.com/en/user-guide/tables-clustering-keys, 
+Clustering keys, for example in [Snowflake](https://docs.snowflake.com/en/user-guide/tables-clustering-keys), 
 are more flexible. You can define clustering key on multiple columns.
 
 Clustering or partitioning is primarily useful on larger tables (think > 1 TB); with smaller ones, the overhead of shuffling data
@@ -594,8 +594,6 @@ I will not show examples with clustering or partitioning keys now, because we wo
 the benefits. I'll try to create such examples in the [accompanying repository](https://github.com/hrubanj/database-playground) later.
 
 ### Hinting
-
-___TODO__: check point here
 Hinting is a way to tell the query planner how to execute the query.
 You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
 the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in
@@ -605,7 +603,8 @@ There are certainly situations when plan hinting is the best strategy, but, from
 If you are not sure whether to use explicit plan hinting, don't. 
 
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
-by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example.
+by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example).
+
 The query extracts the first content block of articles published on the website and it looked like this:
 ```sql
 select e2.id,
