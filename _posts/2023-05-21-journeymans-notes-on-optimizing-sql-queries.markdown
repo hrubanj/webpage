@@ -6,29 +6,30 @@ categories: [programming, sql]
 ---
 ### Introduction
 
-Whether you are running a webpage, an analytic platform, or a data processing job, how you query your database crucially impacts how your application performs.
+How you query your database matters. Whether you are running a webpage, an analytic platform, or a data processing job, the efficiency of your queries directly impacts its performance.
 
-In this article, we will look at some examples of optimization techniques that I use when database performance becomes an issue.
-I certainly don't know all the tricks out there. We will cover those that actually helped me solve problems in production applications in my several years of data engineering. 
+In this article, we will look at some optimization techniques that I use when database performance becomes an issue.
+I certainly don't know all the tricks out there. We will cover those that actually helped me solve problems in production applications. 
 For now, we will focus only on tabular databases that support SQL–probably the most common group. Moreover, we will look primarily into techniques that don't require modifying the database.
 
-If you want to run the examples yourself, go to [this](https://github.com/hrubanj/database-playground) repository and follow the README.
+If you want to run the examples yourself, go to [this](https://github.com/hrubanj/database-playground) repository and follow its README.
 
 
 ### Tabular vs. relational
-We limited the scope of this post to 'tabular databases that support SQL'. Such a long-winded definition might seem unnecessary, so let's unpack it.
+We limited the scope of this post to 'tabular databases that support SQL'. Such definition may sound cagey, so let's unpack it.
 
 Tabular databases store data in tables.
 By SQL support, we mean that we can use the structured query language to query them.
 
-We won't require that the database supports the full SQL standard, otherwise we might end up
-philosphizing whether any full ANSI compliant database exists. Unless stated otherwise, we will use the subset of SQL that is supported by most SQL-like databases.
+We won't require the database to support the full SQL standard, otherwise we might end up
+philosophizing whether any full [ANSI compliant](https://blog.ansi.org/sql-standard-iso-iec-9075-2023-ansi-x3-135/) database exists.
+Unless stated otherwise, we will use the subset of SQL that is supported by most SQL-like databases.
 
 
 Tabular database is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relational constraints.
 Of course, nothing stops you from creating relations among datapoints even in non-relational databases, but relational databases will enforce them for you. E.g., they will
-not let you delete a `user` if they have any `posts`.
-Generally, databases for analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular.
+not let you delete a `user` without deleting their `posts`.
+Databases for analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular.
 Here are some examples of major databases and their properties:
 
 | database                                                              | uses relations constraints | uses SQL | is tabular |
@@ -42,7 +43,7 @@ Here are some examples of major databases and their properties:
 As you probably noticed, we haven't covered all possible combinations. 
 For instance, there are databases that use tables as an underlying storage but do not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)), or
 databases that are tabular and relational but do not support SQL (e.g. [Dataphor](https://github.com/dataphor/Dataphor)).
-From my experience, most major databases fall into one of the categories in the table above.
+Most databases that I've encountered fall into one of the categories in the table above.
 
 
 ### Premature optimization
@@ -51,10 +52,11 @@ Is it a problem that a query takes ten minutes? What if it runs once a day, does
 What if it needs huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
 But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it a hundred times per second. Well...
 Before you start optimizing, know the metric you need to improve. It can be cluster cost, database load, a response time of an endpoint, duration of some job, and many other things.
-Only then, you can actually decide what to optimize.
+Only then, you can actually decide how to optimize.
 
 Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more advantageous to get a larger database.
-On some occasions, your best option is to start tweaking SQL queries. And that is the fun part that we will deal with.
+
+On some occasions, your best option is to start tweaking SQL queries. And that is the fun part that we will deal with in the rest of this article.
 
 ### Our toy dataset
 Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of `users`, `posts`,
@@ -92,28 +94,28 @@ order by 1, 2
 In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
 But let's not get ahead of ourselves.
 
-Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative..
+Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative.
 I am planning to add more database examples in the database playground repository in the future. Currently, I am thinking of
-[Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some more realistic OLAP examples.
+[Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some realistic OLAP examples.
+
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
-This is usually because OLAP database try to be smarter—since they don't need to respond within milliseconds, they can take more time to optimize query execution.
-The benefit of this is that a poorly written query can perform well on OLAP. The negative is that fine-tuning the query might not always work because the query 
+This is among other reasons because OLAP databases try to be smarter—since they don't need to respond within milliseconds, they can take more time to optimize query execution.
+The benefit of this is that a poorly written query can perform well in OLAP. The negative is that fine-tuning the query might not always work because the query 
 optimizer might translate it to the same plan as the suboptimal one.
 
-If you are interested in a more in-depth theoretical discussion of different database types, I strongly recommend that you read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
+If you are interested in a more in-depth discussion of different database types, I strongly recommend you to read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
 It is by far the best book on (not only) databases that I have read so far.
 
 ### Isn't SQL declarative?
 You might have heard that SQL is a declarative language–you tell the database what you want, and it figures out how to get it.
 We will see that how you write your queries can have a substantial impact on performance. Some people argue that this
-means that SQL is not declarative, while others say that it is, but that the declarativity does not guarantee that the
-database will always choose the best plan, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
-about this on StackExchange. We won't delve into this here. Let's rather demonstrate that how you write your queries
-impacts performance.
+means that SQL is not declarative. Others say that it is, but that the declarativity does not guarantee that the
+database will always choose the optimal solution, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
+about this on StackExchange. We won't delve into its details here. Let's rather demonstrate that query structure matters on examples.
 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
-to make sure that these assumptions work well in most situations. But you can still do better than them.
+to make sure that these assumptions work well in **most** situations. But you can still do better than them.
 While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
 be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
@@ -126,7 +128,7 @@ order by timestamp desc
 limit 5
 ;
 ```
-This query is straightforward. We order the visits by timestamp, and then we select the first five. Since the dataset is small,
+This is a straightforward query. We order the visits by timestamp, and then we select the first five. Since the dataset is small,
 it doesn't even take that long (around 200 ms on my computer).
 If we know that out website visited regularly, we can make an assumption that the last five visits occurred, e.g. in the last 10 minutes, 1 day, or whatever seems reasonable.
 Then, we don't need to sort the whole table:
@@ -140,7 +142,7 @@ limit 5
 ```
 This is about twice as fast and gets us the same result.
 
-But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them. The `id` columns is a primary key, so, it is indexed.
+But we can be even smarter about it without making the above assumption. We know that ids in the `visit` table are sequential, so, why not just use them. The `id` column is a primary key, so, it is indexed.
 ```sql
 select *
 from visit
@@ -160,7 +162,7 @@ suddenly starts to take ages or just hangs indefinitely. Why?
 There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it,
 or it might not have the same amount of resources available as in your test environment. Furthermore, your application
 might run the query several times in parallel, which, again, can starve the database of resources.
-Always try to test the scenario that is closest to production. If the query is supposed to run 50 times in parallel,
+Try to emulate production scenario. If the query is supposed to run 50 times in parallel,
 run it 100 times in parallel to make sure that the database can handle it.
 
 In postgres, you can list active queries with this command:
@@ -254,7 +256,7 @@ Can you see how we could speed this query up? Suddenly, it becomes pretty obviou
 ### Clean up
 
 A few years back, I was asked to improve performance of an application that computed several metrics for products.
-Users complained that it has gotten slower over time. It quickly turned out that fetching data was the bottleneck–the actual computation
+Users complained that it had gotten slower over time. It quickly turned out that fetching data was the bottleneck–the actual computation
 took less then 5 % of the total endpoint response time.
 
 Strangely, there were tons of inactive products in the database, even though no one was interested in their metrics. 
@@ -265,8 +267,8 @@ Deleting what you don't need is one of the easiest ways to speed up your queries
 in place, data tends to pile up. Since the queries need to run through more data, they get slower.
 
 ### WHERE to strike
-`WHERE` clause is often the first thing with which you should start playing. 
-The biggest improvements in query performance I have seen resulted from, often small, changes to the filtering conditions.
+`WHERE` clause is often the first thing you should start playing with. 
+Some of the biggest improvements in query performance I have seen resulted from, often small, changes to the filtering conditions.
 
 Let's look at an example query.
 ```sql
@@ -362,10 +364,10 @@ Yet, adding the `v.timestamp > '2023-01-01'` condition speeds up the query by ab
 
 ### Aggregation vs. sorting
 Sorting is expensive. If you can, you should probably avoid it.
-I've seen quite a lot of code that sorts table only to get a maximum of some column, i.e. where simple group by would suffice.
+I've seen quite a lot of code that sorts tables only to get a maximum of some column, i.e., where simple group by would suffice.
 Most often, such queries started out as more complex, and the sorting was originally necessary.
 
-Let's see this on an example.
+Let's see this on an example. We want to get an id and a timestamp of the latest visit to our website.
 ```sql
 select id,
        timestamp
@@ -384,19 +386,20 @@ limit 1
 ```
 
 What is wrong here? The query still sorts the whole table, even though we just need to compute maximum of one column.
-```
-select max(timestamp) as time_updated
+```sql
+select max(timestamp) as timestamp
 from visit
 ;
 ```
 This does the same thing, is more memory efficient, and about 50 % faster. On a large table, the speed difference will be even more pronounced.
 
-This example is so simplistic that it is hard to overlook the problem. However, once you start looking for this pattern, you spot it more often than you'd expect.
+This example is so simplistic that it is hard to overlook the problem. However, once you start looking for this pattern, you will spot it more often than you'd expect.
 
 
 ### Subqueries
-You should always keep your queries as simple as possible, but sometimes the business logic cannot be expressed without nesting.
-Unless you decide to create a temporary table or  view, subqueries and common table expressions (CTEs) are inevitable.
+You should ideally keep your queries as simple as possible–for the benefit of both query programmers and query planners.
+But sometimes the business logic cannot be expressed without nesting.
+Unless you decide to create a temporary table or view, subqueries and common table expressions (CTEs) are inevitable.
 Occasionally, they are useful even if you can avoid them. For example, instead of performing complicated cross join
 and filtering its results, you may be better off de-duplicating tables first, and then joining them without having to filter the result.
 
@@ -408,7 +411,7 @@ a good idea in particular case. What usually works for me is checking the size o
 the subquery filter. If it is large and becomes significantly smaller after filtering, putting the filter into subquery might work.
 Otherwise, it usually won't.
 
-Let's have a query that selects all posts that were update in the 30 days after Alice Vaughan posted her post.
+Let's have a query that selects all posts that were updated in the 30 days after Alice Vaughan posted her post.
 ```sql
 with temp_alice_post as (
     select *
@@ -447,7 +450,7 @@ having count(*) > 100
 order by 1
 ;
 ```
-But there is a actually a faster way to do this, despite being a bit uglier:
+But there is a actually a faster way, despite being a bit uglier:
 ```sql
 with temp_frequent_visitors as (select user_id
                                 from visit
@@ -464,36 +467,36 @@ On my computer, the second query runs about 30 % faster.
 ### Use materialized views
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
 These boastful suffixes usually indicate that the order_**suffix** is just the original **order** table with a few columns joined from another table.
-I've seen hardcore programmers cry in pain when they heard of such crimes against the laws of data modelling.
+I've seen the horror in the eyes of hardcore programmers when they heard of such crimes against the laws of data modelling.
 The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
 
 Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
 which is exactly what the `order_advanced` table provides. Of course, they could join the transportation costs themselves
 but that would slow down their queries, and they would need to duplicate the joining code creating a potential for mistakes.
-Of courser, the data in this table will not reflect production at every point in time.
-But if analysts don't expect near real-time data, the partial inconsistency between actual production data and analytical datasets does not have to be a problem.
+Sure, the data in this table will not reflect production at every point in time.
+But if analysts don't expect near real-time data, the partial inconsistency between actual production data and analytical datasets is not a problem.
 
 Let us call tables that hold only data contained in other tables 'derived tables'.
 
 Another case where you might reach for such derived is an OLAP job. Instead of crafting complicated nested queries, you just create
-temporary table simplifying query planner's job, and delete them when transformation finished.
+temporary table simplifying query planner's job, and delete them when job finishes.
 
 A better alternative to a non-temporary derived is a materialized view, which is basically a table that knows how to
-refresh its data. Materialized view is read-only—you can write only to underlying tables. On refresh, it runs the queries
+refresh its data. Materialized view is read-only. You can write only to underlying tables. On refresh, it runs the queries
 by which it was created.
 However, making sure that the refresh happens when it should is a discipline of its own. (I might write another article on that).
 
 Be aware of the difference between view and materialized view. Materialized view runs queries on refresh, and holds the data,
-i.e. it is a kind of 'derived table', whereas normal view runs its queries when you query the it and does not hold any data.
+i.e. it is a kind of 'derived table', whereas normal view runs its queries when you query it and does not hold any data.
 
-I would argue that using a materialized view is better than using persistent derived tables. Materialized view clearly indicates
-that is read only and can be refreshed with one command and saves you from sending a long query to the server every time you want
+Usually, using a materialized view is better than using persistent derived tables. Materialized view clearly indicates
+that is read-only and can be refreshed with one command and saves you from sending a long query to the server every time you want
 to refresh it.
 
-On the other hand, you might have good reasons to use derived tables, e.g.,  for compatibility with exporters to other systems
+On the other hand, you might have good reasons to use derived tables, e.g., for compatibility with exporters to other systems
 or to make sure that your code lives somewhere else and not in the database.
 
-Apart from the column-adding transformations mentioned above, a good use case for a materialized view might be
+Apart from the column-adding transformations mentioned above, a good use-case for a materialized view might be
 something like this:
 ```sql
 with  temp_total_post_visits as (select post_id,
@@ -533,8 +536,7 @@ and not use functions on the indexed columns. If you do, the database might not 
 [This](https://www.youtube.com/watch?v=BHwzDmr6d7s) video provides a nice illustration.
 
 Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
-that this enforces uniqueness as a well-behaved database would do. It doesn't.
-
+that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
 Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview) 
 that they use constraints mainly as a documentation feature. I am quite sure
 this has confused many people. Seeing duplicates in a primary key column certainly confused me.
@@ -559,9 +561,9 @@ that clustering large table takes a lot of time and needs to happen regularly, o
 their benefits will fade.
 
 Indices are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up space
-and slows down writes.
+and slows down writes to the corresponding table.
 
-Let's see how we can speed up a very simple query by adding a very simple index. Suppose, we want to count posts created
+Let's see how we can speed up a simple query by adding an index. Suppose, we want to count posts created
 during a certain time period.
 ```sql
 select count(*) as post_count
@@ -570,7 +572,7 @@ where time_created between '2021-01-01' and '2021-12-31' -- we could parametrize
 ;
 ```
 This takes about 100 ms on my computer. That might be great or terrible depending on the context. Let's suppose it is
-too slow for you use case, e.g., we need to run this query hundreds times per second and get the results quickly.
+too slow for you use-case, e.g., we need to run this query hundreds times per second and get the results quickly.
 
 The `time_created` column is not indexed, so, the database needs to do a table scan.
 Let's change that:
@@ -597,7 +599,7 @@ the benefits. I'll try to create such examples in the [accompanying repository](
 Hinting is a way to tell the query planner how to execute the query.
 You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
 the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in
-the foot. By explicit plan hinting in Postgres, you are interfering with its optimizer.
+the foot. Explicit hinting interferes with query planner and lock you into a suboptimal execution plan, even if the planner could find a better one.
 Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest, but if you use hints, you restrict its freedom of choice.
 There are certainly situations when plan hinting is the best strategy, but, from my experience, they are rare.
 If you are not sure whether to use explicit plan hinting, don't. 
@@ -605,7 +607,7 @@ If you are not sure whether to use explicit plan hinting, don't.
 Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
 by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example).
 
-The query extracts the first content block of articles published on the website and it looked like this:
+The query extracts the first content block of articles published on the website, and it looked like this:
 ```sql
 select e2.id,
        mac.field_module_text,
@@ -666,7 +668,7 @@ where e."dateDeleted" is null
 ;
 ```
 The sad ending to this story is that I was not able to discover the reason for the difference.
-When I tried to analyze the query plan, suddenly, both version became similarly fast.
+When I tried to analyze the query plan on my computer, suddenly, both version became similarly fast.
 I did not go as far as trying to run analyze on the production database, as it might not end up well.
 
 The moral of the story is not that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
@@ -674,18 +676,18 @@ But you should be careful when optimizing, because query planner can sometimes g
 
 ### Validate in production
 I might get burned at the stake for writing this: you have to test in production. Not only in production, not primarily in production,
-but testing only in a staging environment won't cut it.
+but testing only in a test environment won't cut it.
 
 Not so long ago, I almost destroyed a production database by running a query that took 2 seconds to execute on my computer.
-It took around 7 seconds on staging database. Both my computer, staging and production were running the same version of Postgres.
+It took around 7 seconds on test database. Both my computer, test and production were running the same version of Postgres.
 
-Furthermore, the staging database had the same data as production but was running on a bit weaker machine. It was only logical to assume that in production,
+Furthermore, the test database had the same data as production but was running on a bit weaker machine. It was only logical to assume that in production,
 the query would run for slightly less than 7 seconds. Worst case scenario, it would take 30 seconds if there's a lot of other queries running.
 
 Wrong! It didn't take 7 or 30 seconds. In fact, it failed to finish at all. The production database apparently chose a different query plan,
 and almost committed suicide.
 
-The takeaway is that even if your query is thoroughly tested on staging, you should not make too strong assumptions about its performance in production.
+The takeaway is that even if your query is thoroughly tested in test environment, you should not make too strong assumptions about its performance in production.
 You just have to try it.
 
 ### Conclusion: Question and experiment
@@ -696,5 +698,5 @@ But sometimes, queries will be slow, no matter how much love and care you give t
 Then, you have to think more broadly. Can you get the data from somewhere else, split the query into parts, or redefine the database structure?
 Do you actually need to return all data in this query? Who uses it? What for?
 
-Always question your assumptions. Don't feel foolish if you follow some illogical hunch. Your instincts will get better over time.
+Always question your assumptions. Don't feel foolish if you follow a hunch. Your instincts will get better over time.
 This is more of a general life advice, so, we might as well end the article here.
