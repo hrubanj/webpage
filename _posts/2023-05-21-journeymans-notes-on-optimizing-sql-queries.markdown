@@ -6,11 +6,11 @@ categories: [programming, sql]
 ---
 ### Introduction
 
-How you query your database matters. Whether you are running a webpage, an analytic platform, or a data processing job, the efficiency of your queries directly impacts its performance.
+How you query your database matters. Sloppy queries can bring your website to a halt. Effective queries can make your big data analytic platform run fast.
 
-In this article, we will look at some optimization techniques that I use when database performance becomes an issue.
-I certainly don't know all the tricks out there. We will cover those that actually helped me solve problems in production applications. 
-For now, we will focus only on tabular databases that support SQL–probably the most common group. Moreover, we will look primarily into techniques that don't require modifying the database.
+ This article shares tips I use to make database queries work better.
+I don't know all the tricks out there. We will explore those that actually helped me solve problems in production applications. 
+For now, we will cover only tabular databases that support SQL–the most common group. Moreover, we will focus on techniques that don't change the database.
 
 If you want to run the examples yourself, go to [this](https://github.com/hrubanj/database-playground) repository and follow its README.
 
@@ -21,15 +21,15 @@ We limited the scope of this post to 'tabular databases that support SQL'. Such 
 Tabular databases store data in tables.
 By SQL support, we mean that we can use the structured query language to query them.
 
-We won't require the database to support the full SQL standard, otherwise we might end up
-philosophizing whether any full [ANSI compliant](https://blog.ansi.org/sql-standard-iso-iec-9075-2023-ansi-x3-135/) database exists.
-Unless stated otherwise, we will use the subset of SQL that is supported by most SQL-like databases.
+We won't need the database to support the full SQL standard. Otherwise we would end up
+philosophizing if any full [ANSI compliant](https://blog.ansi.org/sql-standard-iso-iec-9075-2023-ansi-x3-135/) database exists.
+We will generally work with a subset of SQL that most SQL-like databases support. When we use any features of a specific database, we will mention it.
 
 
-Tabular database is not the same thing as relational databases—for example Snowflake falls under our definition, but it does not let you define relational constraints.
-Of course, nothing stops you from creating relations among datapoints even in non-relational databases, but relational databases will enforce them for you. E.g., they will
+Tabular database is not the same thing as a relational database. For example, Snowflake is tabular, but it won't let you define relational constraints.
+You can create relations among datapoints even in non-relational databases. Yet, only relational databases will enforce them for you. E.g., they will
 not let you delete a `user` without deleting their `posts`.
-Databases for analytics tend to use SQL and be tabular but non-relational. On the other hand, several modern databases support a subset of SQL syntax but are not tabular.
+Databases for analytics tend to use SQL and be tabular but non-relational. But, several modern databases support a subset of SQL syntax and are not tabular.
 Here are some examples of major databases and their properties:
 
 | database                                                              | uses relations constraints | uses SQL | is tabular |
@@ -41,23 +41,25 @@ Here are some examples of major databases and their properties:
 
 
 As you probably noticed, we haven't covered all possible combinations. 
-For instance, there are databases that use tables as an underlying storage but do not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)), or
-databases that are tabular and relational but do not support SQL (e.g. [Dataphor](https://github.com/dataphor/Dataphor)).
+Some databases use tables as an underlying storage but do not support SQL queries (e.g. [EdgeDB](https://www.edgedb.com/)).
+Others are tabular and relational but do not support SQL (e.g. [Dataphor](https://github.com/dataphor/Dataphor)).
+And we could continue adding more exotic combinations.
 Most databases that I've encountered fall into one of the categories in the table above.
 
 
 ### Premature optimization
-We started the article hinting that improving query performance can boost your applications' performance. But not always.
+We hinted that you should improve your queries to improve you applications' performance. But not always.
 Is it a problem that a query takes ten minutes? What if it runs once a day, does not block any other queries, and processes terabytes of data? Maybe not a problem.
-What if it needs huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
+What if it needs a huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a problem.
 But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it a hundred times per second. Well...
 Before you start optimizing, know the metric you need to improve. It can be cluster cost, database load, a response time of an endpoint, duration of some job, and many other things.
 Only then, you can actually decide how to optimize.
 
-Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more advantageous to get a larger database.
+Sometimes, the cost of your time might outweigh and potential cost savings. Other times, it might be more helpful to get a larger database.
 
 On some occasions, your best option is to start tweaking SQL queries. And that is the fun part that we will deal with in the rest of this article.
 
+__TODO__: continue readability edits here
 ### Our toy dataset
 Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of `users`, `posts`,
 `comments`, and `visits`. The data are pseudo-randomly generated (see [this repository](https://github.com/hrubanj/database-playground)).
