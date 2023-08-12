@@ -59,20 +59,19 @@ Sometimes, the cost of your time might outweigh and potential cost savings. Othe
 
 On some occasions, your best option is to start tweaking SQL queries. And that is the fun part that we will deal with in the rest of this article.
 
-__TODO__: continue readability edits here
 ### Our toy dataset
 Throughout this article, we will be using a toy dataset with data for a fictitious website. We have tables of `users`, `posts`,
 `comments`, and `visits`. The data are pseudo-randomly generated (see [this repository](https://github.com/hrubanj/database-playground)).
-The tables are not very large, but they are large enough to demonstrate most techniques we will discuss.
+The tables are small, but they are large enough to show most techniques we will discuss.
 
 ### Horses for courses (OLAP vs. OLTP)
 Are you working with the right type of database?
-Even though, you can just copy-paste most of your Postgres queries and run them in Snowflake, these databases are useful for entirely different purposes.
-While Postgres is optimized for quickly fetching individual rows, Snowflake shows its strength on large data aggregations.
-On the flipside, you probably shouldn't build a data lake on Postgres, and you should definitely avoid using Snowflake for low-latency applications.
-I used to joke that every query takes a couple of seconds in Snowflake—no matter whether you are retrieving one row or performing an aggregation over millions of rows.
+You can copy-paste most of your Postgres queries and run them in Snowflake. Yet these databases are useful for different purposes.
+Postgres optimizes for fetching individual rows quickly. Snowflake shows its strength on large data aggregations.
+On the flipside, you shouldn't build a data lake on Postgres. And you should definitely avoid using Snowflake for low-latency applications.
+I used to joke that every query takes a couple of seconds in Snowflake. No matter whether you are retrieving one row or aggregating millions of rows.
 Of course, it works up to a point, once you get to really large table, even Snowflake queries take minutes or hours.
-More generally, Postgres is an online transactional processing (OLTP) database, and Snowflake is an online analytics processing (OLAP) database.
+Postgres belongs to a family of online transactional processing (OLTP) databases. Snowflake, on the other hand, is an online analytics processing (OLAP) database.
 Use OLTP if you need low latency, and OLAP if you need heavy aggregations.
 
 A typical OLTP query might look something like this:
@@ -93,6 +92,7 @@ group by 1, 2
 order by 1, 2
 ;
 ```
+__TODO__: continue readability edits here
 In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
 But let's not get ahead of ourselves.
 
