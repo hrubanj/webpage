@@ -38,6 +38,7 @@ define relational constraints.
 You can create relations among datapoints even in non-relational databases. Yet only relational databases will enforce
 them for you. E.g., they will
 not let you delete a `user` without deleting their `posts`.
+
 Databases for analytics tend to use SQL and be tabular but non-relational. Several modern databases support a subset of
 SQL syntax and are not tabular.
 Here are some examples of major databases and their properties:
@@ -65,6 +66,7 @@ What if it needs a huge Snowflake cluster, and the ten minutes cost you a ton of
 problem.
 But a query that takes 200 millisecond is surely not a problem, right? What if your application needs to run it a
 hundred times per second. Well...
+
 Before you start optimizing, know the metric you need to improve. It can be cluster cost, database load, a response time
 of an endpoint, duration of some job, and many other things.
 Only then, you can actually decide how to optimize.
@@ -91,11 +93,13 @@ purposes.
 Postgres optimizes for fetching individual rows quickly. Snowflake shows its strength on large data aggregations.
 On the flipside, you shouldn't build a data lake on Postgres. And you should definitely avoid using Snowflake for
 low-latency applications.
+
 I used to joke that every query takes a couple of seconds in Snowflake. No matter whether you are retrieving one row or
 aggregating millions of rows.
 Of course, it works up to a point, once you get to really large table, even Snowflake queries take minutes or hours.
 Postgres belongs to a family of online transactional processing (OLTP) databases. Snowflake, on the other hand, is an
 online analytics processing (OLAP) database.
+
 Use OLTP if you need low latency, and OLAP if you need heavy aggregations.
 
 A typical OLTP query might look something like this:
@@ -228,9 +232,10 @@ This query is database-specific. You will need to read documentation to get its 
 ### Use diagnostic tools, particularly visualizers
 
 Databases usually have a way to display how they decided to execute your query, i.e. display the query plan.
-Studying it can show you what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between
+Studying it can reveal what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between
 checking the plan and tweaking the query.
-Sometimes, query plan will show you on what parts of the query you should focus, but on some occasions, you will see
+
+Sometimes, a query plan will show you on what parts of the query you should focus, but on some occasions, you will see
 that the query plan is suboptimal given your data. For example if order of joins is such that most data is filtered out
 at the end. In the latter case, you might try to push query planner into picking a better plan (see the section on
 Hinting).
@@ -365,7 +370,7 @@ For example, we cannot get a zero division error in the query above even if the 
 to calculate `posts_per_second_active` before removing rows where `max(p.time_created) = min(p.time_created)`.
 
 In reality, the `WHERE` clause, or parts of it, might get executed even before tables are joined.
-The `WHERE` clause reduces the amount of data we are working with from the start, and all next steps have easier job if
+The `WHERE` clause reduces the size of data we are working with from the start, and all next steps have easier job if
 they work with fewer data.
 
 But a filtering clause that duplicates conditions already included in a join might actually slow queries down.
@@ -438,7 +443,7 @@ I've seen quite a lot of code that sorts tables only to get a maximum of some co
 suffice.
 Most often, such queries started out as more complex, and the sorting was originally necessary.
 
-Let's see this on an example. We want to get an id and a timestamp of the latest visit to our website.
+Let's see this on an example. We want to get an id and a timestamp of the latest visit to our website:
 
 ```sql
 select id, timestamp
@@ -476,8 +481,8 @@ will spot it more often than you'd expect.
 ### Subqueries
 
 You should keep your queries as simple as possible. That will help both programmers and query planners.
-But sometimes you cannot express the business logic without nesting.
-Unless you decide to create a temporary table or view, subqueries and common table expressions (CTEs) are inevitable.
+But sometimes you cannot express the business logic without nesting. Unless you decide to create a temporary table or view, subqueries and common table expressions (CTEs) are inevitable.
+
 Occasionally, they can help you even if you can avoid them. For example, instead of cross joining tables and filtering
 the results, you may be better off de-duplicating them first. Then you join them without having to filter the result.
 Be careful though–the query planner might be smart enough to optimize the original (non-nested) query.
@@ -553,6 +558,7 @@ On my computer, the second query runs about 30 % faster.
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
 These boastful suffixes usually mean that the order_**suffix** table is the original **order** table with a few columns
 joined from another one.
+
 I've also seen the horror in the eyes of hardcore programmers when they heard of such crimes against the laws of data
 modelling.
 The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
@@ -572,7 +578,7 @@ Another case where you might reach for such derived is an OLAP job. Instead of c
 create
 temporary table simplifying query planner's job, and delete them when job finishes.
 
-A better alternative to a non-temporary derived is a materialized view, which is basically a table that knows how to
+A better alternative to a non-temporary derived table is a materialized view, which is basically a table that knows how to
 refresh its data. Materialized view is read-only. You can write only to underlying tables. On refresh, it runs the
 queries
 by which it was created.
@@ -587,7 +593,7 @@ Usually, using a materialized view is better than using persistent derived table
 is read-only. You can refresh it with one command, and you don't have to send a long query to the server every time you
 want to do it.
 Then again, you might have good reasons to use derived tables, e.g., for compatibility with exporters to other systems
-or to make sure that your code lives somewhere else and not in the database.
+or to make sure you store your code transparently somewhere else, and not in the database.
 
 Apart from the column-adding transformations mentioned above, a good use-case for a materialized view might be something
 like this:
@@ -625,6 +631,7 @@ and refresh it, e.g., once every ten minutes.
 
 If your query hits an index, you are in luck. Indices are the most common tool databases give you to speed up fetching
 or filtering records.
+
 When your query hits an index, the database does not need to scan the whole table, and thus needs to read much fewer
 data.
 Indices work primarily in OLTP databases. If you can, you should directly compare against the index values in
@@ -632,20 +639,20 @@ the `WHERE` clause or join and not use functions on the indexed columns. If you 
 use the index.
 [This](https://www.youtube.com/watch?v=BHwzDmr6d7s) video provides a nice illustration.
 
-Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
+Be careful when you read about indexes in OLAP. Snowflake, for example, lets you define a primary key. You might think
 that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
 Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview)
 that they use constraints as a documentation feature. I am quite sure
 this has confused many people. Seeing duplicates in a primary key column certainly confused me.
 
-In OLAP databases, you might encounter clustering, partitioning, or some other keys. These are columns that usually
+In OLAP databases, you might encounter clustering, partitioning, or some other keys. These usually
 divide table into
-chunks. If we take our `post` table from previous examples and set clustering key to `updated_at`, the database
+chunks. If we take our `post` table from previous examples and set clustering key to `updated_at` column, the database
 will ideally create chunks that cover mutually exclusive time intervals of `updated_at` .
 When your query hits a clustering or partitioning key, the database can skip all chunks that do not contain the key.
 If you do not hit the key, it needs to check all partitions.
 
-If you decide to partition, you should choose a column that you often use to filter it. Often, databases will let you
+If you decide to partition a table, you should choose a column that you often use to filter it. Often, databases will let you
 define only one
 partition column, e.g. [BigQuery](https://cloud.google.com/bigquery/docs/partitioned-tables).
 In practice, people often partition by insertion date in append-only tables. This makes sense because if data grows
@@ -657,11 +664,10 @@ are more flexible. You can define clustering key on multiple columns.
 Clustering or partitioning is primarily useful on larger tables (think > 1 TB). With smaller ones, the overhead of
 shuffling data might not be worth it. If you are paying for the time that database does something, as in Snowflake, you
 should also consider that clustering large table takes a lot of time and needs to happen regularly. Otherwise, the
-chunks won't be balanced their benefits will fade.
+chunks won't be balanced, and their benefits will fade.
 
-Indices are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up
-space
-and slows down writes to the corresponding table.
+Indexes are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up
+space and slows down writes to the corresponding table.
 
 Let's see how we can speed up a simple query by adding an index. Imagine we want to tally the posts created within a
 specific timeframe:
@@ -707,7 +713,9 @@ the [accompanying repository](https://github.com/hrubanj/database-playground) la
 Hinting is a way to tell the query planner how to execute the query.
 You can do it either explicitly (e.g. via `pg_hint_plan` in Postgres), or by tweaking the query, so that the planner
 selects the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you
-can shoot yourself in the foot. Explicit hinting interferes with query planner. It can lock you into a suboptimal
+can shoot yourself in the foot.
+
+Explicit hinting interferes with query planner. It can lock you into a suboptimal
 execution plan, even if the planner could find a better one.
 Normally, Postgres' cost-based optimizer estimates costs of different possible plans and selects the cheapest. If you
 use hints, you restrict its freedom of choice.
@@ -816,7 +824,7 @@ Wrong! It didn't take 7 or 30 seconds. In fact, it failed to finish at all. The 
 query plan,
 and almost committed suicide.
 
-Even if test your query thoroughly in test environment, you should not make too strong assumptions about its performance
+Even if test your query thoroughly in your test environment, you should not make too strong assumptions about its performance
 in production.
 You just have to try it.
 
