@@ -92,37 +92,34 @@ group by 1, 2
 order by 1, 2
 ;
 ```
-__TODO__: continue readability edits here
-In real use cases, both OLAP and OLTP queries can get substantially more complex than these examples.
+In real applications, both OLAP and OLTP queries can get a lot more complex than these examples.
 But let's not get ahead of ourselves.
 
 Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative.
-I am planning to add more database examples in the database playground repository in the future. Currently, I am thinking of
+I am planning to add more database examples to the [playground]((https://github.com/hrubanj/database-playground)) repository in the future.. Currently, I am thinking of
 [Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some realistic OLAP examples.
 
 Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
-This is among other reasons because OLAP databases try to be smarter—since they don't need to respond within milliseconds, they can take more time to optimize query execution.
-The benefit of this is that a poorly written query can perform well in OLAP. The negative is that fine-tuning the query might not always work because the query 
-optimizer might translate it to the same plan as the suboptimal one.
+This is, among other reasons, because OLAP databases try to be smarter. Since they don't need to respond within milliseconds, they can take more time to optimize query execution.
+The benefit of this is that a poorly written query can perform well in OLAP. The negative is that fine-tuning such query might not always work, because the query 
+optimizer might translate both version to the same plan.
 
-If you are interested in a more in-depth discussion of different database types, I strongly recommend you to read [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
+If you want to know more about different database types, read  [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
 It is by far the best book on (not only) databases that I have read so far.
 
 ### Isn't SQL declarative?
 You might have heard that SQL is a declarative language–you tell the database what you want, and it figures out how to get it.
-We will see that how you write your queries can have a substantial impact on performance. Some people argue that this
-means that SQL is not declarative. Others say that it is, but that the declarativity does not guarantee that the
-database will always choose the optimal solution, regardless of how you write the query. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
-about this on StackExchange. We won't delve into its details here. Let's rather demonstrate that query structure matters on examples.
+We will see that how you write your queries impacts their performance. Some people argue that this
+means that SQL is not declarative. Others say that declarativity does not guarantee that the database will always choose the optimal solution. There is a nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
+about this on StackExchange. We won't delve into its details here. Let's rather show that query structure matters on examples.
 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
 to make sure that these assumptions work well in **most** situations. But you can still do better than them.
-While a database might guess that a join will produce something between 1 and 30 million rows, you might know that it will
-be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
+While a database can guess that a join will produce something between 1 and 30 million rows, you might know that it will be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
 
-Suppose, we want to display the last five visits of our website:
+Suppose we want to display the last five visits of our website:
 ```sql
 select *
 from visit
@@ -130,9 +127,10 @@ order by timestamp desc
 limit 5
 ;
 ```
-This is a straightforward query. We order the visits by timestamp, and then we select the first five. Since the dataset is small,
+This is a straightforward query. We order the visits by timestamp, and then select the first five. Since the dataset is small,
 it doesn't even take that long (around 200 ms on my computer).
-If we know that out website visited regularly, we can make an assumption that the last five visits occurred, e.g. in the last 10 minutes, 1 day, or whatever seems reasonable.
+If we know that our website visited regularly, we can make an assumption when the last five visits occurred. It can be the last 10 minutes, 1 day, or whatever seems reasonable.
+
 Then, we don't need to sort the whole table:
 ```sql
 select *
@@ -152,20 +150,17 @@ order by id desc
 limit 5
 ;
 ```
-This is about 80 times faster than the previous version and 160 times faster than the original one.
+This is about 80 times faster than the previous version, and 160 times faster than the original one.
 
 We will discuss indexes and their OLAP counterparts in a later section.
 
 
 ## What else is running on your database?
 Imagine that you wrote a query that is pretty fast and seems to work well. But when you run it in production, it
-suddenly starts to take ages or just hangs indefinitely. Why?
+starts to take ages or hangs indefinitely. Why?
 
-There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it,
-or it might not have the same amount of resources available as in your test environment. Furthermore, your application
-might run the query several times in parallel, which, again, can starve the database of resources.
-Try to emulate production scenario. If the query is supposed to run 50 times in parallel,
-run it 100 times in parallel to make sure that the database can handle it.
+There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it, or it might not have the same amount of resources available as in your test environment. Furthermore, your application might run the query several times in parallel.
+Try to emulate production scenario. If the query should run 50 times in parallel in production, run it 100 times in parallel to make sure that the database can handle it.
 
 In postgres, you can list active queries with this command:
 ```sql
@@ -174,23 +169,21 @@ from pg_stat_activity
 where state = 'active'
 ;
 ```
-This query is database-specific, so, you will need to consult docs to get its equivalent in other databases.
+
+This query is database-specific. You will need to consult docs to get its counterparts in other databases.
 
 ### Use diagnostic tools, particularly visualizers
 Databases usually have a way to display how they decided to execute your query, i.e. display the query plan. 
-Studying it can show you
-what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
+Studying it can show you  what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between checking the plan and tweaking the query.
 Sometimes, query plan will show you on what parts of the query you should focus, but on some occasions, you will see
-that the query plan is clearly suboptimal given your data–for example if order of joins is such that most data is filtered out 
+that the query plan is suboptimal given your data. For example if order of joins is such that most data is filtered out 
 at the end. In the latter case, you might try to push query planner into picking a better plan (see the section on Hinting).
 
 I think execution plan visualizers are the most useful optimization tool.
-While you might struggle to find bottlenecks in the textual plan, it is 
-often clear from the first look at the picture.
-Some SAAS database providers embed visualizers to their service, but there are also free versions, e.g. for Postgres.
+While you might struggle to find bottlenecks in the plan description, you will often see them on the first look at its visualization.
+Some SAAS database providers embed visualizers to their service. There are also free versions for many databases, e.g. for Postgres.
 
-Lets' see this on a simple example query. We want to find out whether people are more likely to comment on posts from poster's
-with the same email domain as they have. (Spoiler alert: They should not since the data is pseudo-random).
+Let's see this on a simple example query. We want to find out if people are more likely to comment on posts from poster's with the same email domain as they have. (Spoiler alert: They should not since the data is pseudo-random).
 
 ```sql
 explain (analyse , buffers , verbose)
@@ -244,7 +237,7 @@ This is the query plan output by Postgres:
 |   Timing: Generation 8.097 ms, Inlining 0.000 ms, Optimization 5.882 ms, Emission 44.183 ms, Total 58.162 ms |
 | Execution Time: 1150.066 ms |
 
-Sure, this query is not complex, so, reading the query plan is pretty straightforward once you get used to it.
+Sure, this query is not complex, so, reading the query plan is straightforward once you get used to it.
 
 But let's compare it to the visualization of the same thing:
 
@@ -257,11 +250,10 @@ Can you see how we could speed this query up? Suddenly, it becomes pretty obviou
 
 ### Clean up
 
-A few years back, I was asked to improve performance of an application that computed several metrics for products.
-Users complained that it had gotten slower over time. It quickly turned out that fetching data was the bottleneck–the actual computation
+A few years back, I had to speed up an application that computed several metrics for products.
+Users complained that it had gotten slower. I quickly realized that fetching data was the bottleneck–the actual computation
 took less then 5 % of the total endpoint response time.
-
-Strangely, there were tons of inactive products in the database, even though no one was interested in their metrics. 
+Strangely, there were tons of inactive products in the database, even though no one cared about their metrics. 
 
 When I deleted them, the critical endpoint got 3 times faster.
 
@@ -270,7 +262,7 @@ in place, data tends to pile up. Since the queries need to run through more data
 
 ### WHERE to strike
 `WHERE` clause is often the first thing you should start playing with. 
-Some of the biggest improvements in query performance I have seen resulted from, often small, changes to the filtering conditions.
+The biggest improvements in query performance I have seen often came from changes to the filtering conditions.
 
 Let's look at an example query.
 ```sql
@@ -303,10 +295,9 @@ For example, we cannot get a zero division error in the query above even if the 
 to calculate `posts_per_second_active` before removing rows where `max(p.time_created) = min(p.time_created)`.
 
 In reality, the `WHERE` clause, or parts of it, might get executed even before tables are joined.
-The `WHERE` clause reduces the amount of data we are working with from the start, and all subsequent steps have
-easier job if they work with less data.
+The `WHERE` clause reduces the amount of data we are working with from the start, and all next steps have easier job if they work with less data.
 
-On the other hand, a filtering clause that duplicates conditions already included in a join might actually slow queries down.
+But a filtering clause that duplicates conditions already included in a join might actually slow queries down.
 Let's compare these two queries:
 
 *Without an extra condition in the `WHERE` clause*
@@ -324,7 +315,7 @@ limit 10
 This takes about 218 ms on my machine.
 
 Trying to add conditions to the `WHERE` clause or move conditions from the join there slows the query down.
-(Try commenting and uncommenting the `WHERE` clause or the `HAVING` clause in the query below to see the difference)
+(Try commenting and uncommenting the `WHERE` clause or the `HAVING` clause in the query below to see the difference).
 ```sql
 select u.name,
        sum(c.upvotes_count) as total_upvotes
@@ -337,10 +328,9 @@ order by 2 desc
 limit 10
 ;
 ```
-We need a more complex query to get some benefit from putting logically unnecessary conditions to the `WHERE` clause.
+We need a more complex query to benefit from putting logically unnecessary conditions to the `WHERE` clause.
 
-Admittedly, this example is a bit convoluted: suppose we want to get a ranked list of users that visited our website (not necessarily the post itself) in 30 days
-after a post was created.
+Admittedly, the following example is a bit convoluted. Suppose we want to get a ranked list of users that visited our website in 30 days after a post was created. (The did not need to visit the post itself).
 
 ```sql
 select p.id                                                             as post_id,
@@ -358,8 +348,7 @@ where p.time_created > '2023-01-01'
   and v.timestamp > '2023-01-01'
 ;
 ```
-As you can see, the `v.timestamp > '2023-01-01'` condition is not necessary as the inner join guarantees that `v.timestamp >= p.time_created` and `p.time_created > '2023-01-01'`
-is already in the `WHERE` clause.
+As you can see, the `v.timestamp > '2023-01-01'` condition is not necessary. The inner join guarantees that `v.timestamp >= p.time_created` and `p.time_created > '2023-01-01'` is already in the `WHERE` clause.
 
 Yet, adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 20 % on my machine.
 
@@ -387,7 +376,7 @@ limit 1
 ;
 ```
 
-What is wrong here? The query still sorts the whole table, even though we just need to compute maximum of one column.
+What is wrong here? The query still sorts the whole table, even though we just need to compute the maximum of one column.
 ```sql
 select max(timestamp) as timestamp
 from visit
@@ -395,25 +384,22 @@ from visit
 ```
 This does the same thing, is more memory efficient, and about 50 % faster. On a large table, the speed difference will be even more pronounced.
 
-This example is so simplistic that it is hard to overlook the problem. However, once you start looking for this pattern, you will spot it more often than you'd expect.
-
+This example is so simplistic that it is hard to overlook the problem. But, once you start looking for this pattern, you will spot it more often than you'd expect.
 
 ### Subqueries
-You should ideally keep your queries as simple as possible–for the benefit of both query programmers and query planners.
-But sometimes the business logic cannot be expressed without nesting.
+You should keep your queries as simple as possible. That will help both programmers and query planners.
+But sometimes you cannot express the business logic without nesting.
 Unless you decide to create a temporary table or view, subqueries and common table expressions (CTEs) are inevitable.
-Occasionally, they are useful even if you can avoid them. For example, instead of performing complicated cross join
-and filtering its results, you may be better off de-duplicating tables first, and then joining them without having to filter the result.
+Occasionally, they are useful even if you can avoid them. For example, instead of cross joining tables and filtering the results, you may be better off de-duplicating them first. Then you join them without having to filter the result.
+Be careful though–the query planner might be smart enough to optimize the original (non-nested) query.
+Using subqueries can actually complicate its work.
 
-Be careful though–the query planner might be smart enough to optimize the original (non-nested) query, 
-and using subqueries can actually complicate its work.
-
-Hence, this is something you have to test. There is not theoretical rule that will reliably tell you whether using subquery is
+Hence, this is something you have to test. There is not theoretical rule that will tell you whether using subquery is
 a good idea in particular case. What usually works for me is checking the size of the table in subquery before and after applying
-the subquery filter. If it is large and becomes significantly smaller after filtering, putting the filter into subquery might work.
+the subquery filter. If it is large and becomes much smaller after filtering, putting the filter into subquery might work.
 Otherwise, it usually won't.
 
-Let's have a query that selects all posts that were updated in the 30 days after Alice Vaughan posted her post.
+Let's have a query that selects all posts that were updated in the 30 days after Alice Vaughan posted her post
 ```sql
 with temp_alice_post as (
     select *
@@ -468,38 +454,33 @@ On my computer, the second query runs about 30 % faster.
 
 ### Use materialized views
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
-These boastful suffixes usually indicate that the order_**suffix** is just the original **order** table with a few columns joined from another table.
+These boastful suffixes usually mean that the order_**suffix** table is the original **order** table with a few columns joined from another one.
 I've seen the horror in the eyes of hardcore programmers when they heard of such crimes against the laws of data modelling.
 The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
 
 Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
-which is exactly what the `order_advanced` table provides. Of course, they could join the transportation costs themselves
-but that would slow down their queries, and they would need to duplicate the joining code creating a potential for mistakes.
-Sure, the data in this table will not reflect production at every point in time.
-But if analysts don't expect near real-time data, the partial inconsistency between actual production data and analytical datasets is not a problem.
+which is exactly what the `order_advanced` table provides. Of course, they could join the transportation costs themselves but that would slow their queries down. Moreover, they would need to duplicate the joining code creating a potential for mistakes.
+Sure, the data in this table will not reflect production at every moment.
+But if analysts don't expect near real-time data, the partial inconsistency between production data and analytical datasets is not a problem.
 
 Let us call tables that hold only data contained in other tables 'derived tables'.
 
-Another case where you might reach for such derived is an OLAP job. Instead of crafting complicated nested queries, you just create
+Another case where you might reach for such derived is an OLAP job. Instead of crafting complicated nested queries, you create
 temporary table simplifying query planner's job, and delete them when job finishes.
 
 A better alternative to a non-temporary derived is a materialized view, which is basically a table that knows how to
 refresh its data. Materialized view is read-only. You can write only to underlying tables. On refresh, it runs the queries
 by which it was created.
-However, making sure that the refresh happens when it should is a discipline of its own. (I might write another article on that).
+But making sure that the refresh happens when it should is a discipline of its own. (I will write another article on that).
 
 Be aware of the difference between view and materialized view. Materialized view runs queries on refresh, and holds the data,
 i.e. it is a kind of 'derived table', whereas normal view runs its queries when you query it and does not hold any data.
 
-Usually, using a materialized view is better than using persistent derived tables. Materialized view clearly indicates
-that is read-only and can be refreshed with one command and saves you from sending a long query to the server every time you want
-to refresh it.
-
-On the other hand, you might have good reasons to use derived tables, e.g., for compatibility with exporters to other systems
+Usually, using a materialized view is better than using persistent derived tables. Materialized view indicates that it is read-only. You can refresh it with one command and you don't have to send a long query to the server every time you want to do it.
+Then again, you might have good reasons to use derived tables, e.g., for compatibility with exporters to other systems
 or to make sure that your code lives somewhere else and not in the database.
 
-Apart from the column-adding transformations mentioned above, a good use-case for a materialized view might be
-something like this:
+Apart from the column-adding transformations mentioned above, a good use-case for a materialized view might be something like this:
 ```sql
 with  temp_total_post_visits as (select post_id,
                                         count(*) as visits_count
@@ -525,7 +506,7 @@ order by 2 desc
 limit 100
 ;
 ```
-This query creates a leaderboard of trending posters. We might want to display it to our users on their home page.
+This query creates a leaderboard of trending posters. We want want to display it to our users on their home page.
 Recomputing all aggregations on every home page refresh might be too expensive. Instead, we can create a materialized view,
 and refresh it, e.g., once every ten minutes.
 
@@ -533,14 +514,12 @@ and refresh it, e.g., once every ten minutes.
 
 If your query hits an index, you are in luck. Indices are the most common tool databases give you to speed up fetching or filtering records.
 When your query hits an index, the database does not need to scan the whole table, and thus needs to read much fewer data.
-Indices work primarily in OLTP databases. Ideally, you should directly compare against the index values in the `WHERE` clause or join
-and not use functions on the indexed columns. If you do, the database might not be able to use the index.
+Indices work primarily in OLTP databases. If you can, you should directly compare against the index values in the `WHERE` clause or join and not use functions on the indexed columns. If you do, the database might not be able to use the index.
 [This](https://www.youtube.com/watch?v=BHwzDmr6d7s) video provides a nice illustration.
 
-Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
-that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
+Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
 Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview) 
-that they use constraints mainly as a documentation feature. I am quite sure
+that they use constraints as a documentation feature. I am quite sure
 this has confused many people. Seeing duplicates in a primary key column certainly confused me.
 
 In OLAP databases, you might encounter clustering, partitioning, or some other keys. These are columns that usually divide table into
@@ -549,24 +528,22 @@ will ideally create chunks that cover mutually exclusive time intervals of `upda
 When your query hits a clustering or partitioning key, the database can skip all chunks that do not contain the key. 
 If you do not hit the key, it needs to check all partitions.
 
-If you decide to partition, you should choose a column that you often use to filter it. Often, databases will let you define just one
+If you decide to partition, you should choose a column that you often use to filter it. Often, databases will let you define only one
 partition column, e.g. [BigQuery](https://cloud.google.com/bigquery/docs/partitioned-tables).
 In practice, people often partition by insertion date in append-only tables. This makes sense because if data grows
-in a reasonably similar pace in time, and you usually need to work with data for certain time period.
+in a reasonably similar pace in time, and you usually need to work with data for certain period.
 
 Clustering keys, for example in [Snowflake](https://docs.snowflake.com/en/user-guide/tables-clustering-keys), 
 are more flexible. You can define clustering key on multiple columns.
 
-Clustering or partitioning is primarily useful on larger tables (think > 1 TB); with smaller ones, the overhead of shuffling data
-might not be worth it. If you are paying for the time that database does something, as in Snowflake, you should also consider
-that clustering large table takes a lot of time and needs to happen regularly, otherwise the chunks won't be balanced
-their benefits will fade.
+Clustering or partitioning is primarily useful on larger tables (think > 1 TB). With smaller ones, the overhead of shuffling data might not be worth it. If you are paying for the time that database does something, as in Snowflake, you should also consider that clustering large table takes a lot of time and needs to happen regularly. Otherwise the chunks won't be balanced their benefits will fade.
 
 Indices are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up space
 and slows down writes to the corresponding table.
 
 Let's see how we can speed up a simple query by adding an index. Suppose, we want to count posts created
-during a certain time period.
+during a certain period.
+
 ```sql
 select count(*) as post_count
 from post
@@ -585,7 +562,7 @@ create index post_time_created_idx on post(time_created)
 Now, we are at 10 ms, so 10 times speedup. The database needs to do index-only scan. Since we care only about the number
 of rows, it does not need to read any data from the table.
 
-But even a query that needs to read some data, will be made faster by an index.
+But even a query that needs to read some data, will be faster thanks to an index.
 ```sql
 select count(distinct user_id) as post_count
 from post
@@ -594,22 +571,17 @@ where time_created between '2021-01-01' and '2021-12-31'
 ```
 This takes about 100 ms without the index on `time_created` and about 40 ms with it.
 
-I will not show examples with clustering or partitioning keys now, because we would need to generate a lot more data to see
-the benefits. I'll try to create such examples in the [accompanying repository](https://github.com/hrubanj/database-playground) later.
+I will not show examples with clustering or partitioning keys here. We would need to generate a lot more data to see their benefits. I'll try to create such examples in the [accompanying repository](https://github.com/hrubanj/database-playground) later.
 
 ### Hinting
 Hinting is a way to tell the query planner how to execute the query.
-You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects
-the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in
-the foot. Explicit hinting interferes with query planner and lock you into a suboptimal execution plan, even if the planner could find a better one.
-Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest, but if you use hints, you restrict its freedom of choice.
-There are certainly situations when plan hinting is the best strategy, but, from my experience, they are rare.
+You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in the foot. Explicit hinting interferes with query planner. It can lock you into a suboptimal execution plan, even if the planner could find a better one.
+Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest.  If you use hints, you restrict its freedom of choice.
+There are situations when plan hinting is the best strategy, but, from my experience, they are rare.
 If you are not sure whether to use explicit plan hinting, don't. 
 
-Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower
-by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example).
-
-The query extracts the first content block of articles published on the website, and it looked like this:
+Sometimes, you might boost query performance by tweaks that make no apparent sense. Let's see how I made a query almost two hundred times slower by removing an unnecessary join. (Unfortunately, I was not able to reproduce this with toy data, so I will use a real example).
+The query extracts the first content block of articles published on the website:
 ```sql
 select e2.id,
        mac.field_module_text,
@@ -629,11 +601,11 @@ where e."dateDeleted" is null
 This was a subquery in a larger query, but I will not copy the whole thing here as it would be hard to see the important parts.
 
 While refactoring the code, I realized that the `handle` column is not used anywhere, so, I removed it. The output no longer included any data from the `entrytypes` table.
-You might think that the `entrytypes` table still did some filtering since we are performing inner join. But it does not filter anything, even though you cannot see it from the query alone.
+You might think that the `entrytypes` table still filters something since I am using an inner join. But it does not, even though you cannot see it from the query alone.
 I am joining `entrytypes` on `entries` on `entries.typeId` = `entrytypes.id`. `entries.typeId` is a non-nullable column with a foreign key to `entrytypes.id`, and
 `entrytypes.id` is a primary key. Hence, if I remove the excessive join, the output will be identical.
 
-That is what I did, hoping to see some performance improvement. Now, the sub-query looked like this:
+That is what I did, hoping to see some performance improvement:
 ```sql
 select e2.id,
        mac.field_module_text
@@ -670,34 +642,31 @@ where e."dateDeleted" is null
 ;
 ```
 The sad ending to this story is that I was not able to discover the reason for the difference.
-When I tried to analyze the query plan on my computer, suddenly, both version became similarly fast.
-I did not go as far as trying to run analyze on the production database, as it might not end up well.
+When I tried to analyze the query plan on my computer, both version were similarly fast.
+I did not go as far as trying to run Postgres' analyze on the production database, as it might not end up well.
 
-The moral of the story is not that you should go crazy adding unnecessary joins to your queries and hope that it will speed them up.
-But you should be careful when optimizing, because query planner can sometimes get hints from things that almost seem like a programmer's mistake.
+The moral of the story is not that you should go crazy adding unnecessary joins to your queries, and hope that it will speed them up.
+But you should be careful when optimizing. Query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
 ### Validate in production
-I might get burned at the stake for writing this: you have to test in production. Not only in production, not primarily in production,
+I might get burned at the stake for writing this: you have to test in production. Not only in production, not mainly in production,
 but testing only in a test environment won't cut it.
-
 Not so long ago, I almost destroyed a production database by running a query that took 2 seconds to execute on my computer.
 It took around 7 seconds on test database. Both my computer, test and production were running the same version of Postgres.
 
-Furthermore, the test database had the same data as production but was running on a bit weaker machine. It was only logical to assume that in production,
-the query would run for slightly less than 7 seconds. Worst case scenario, it would take 30 seconds if there's a lot of other queries running.
+Furthermore, the test database had the same data as production but was running on a bit weaker machine. It was only logical to assume that in production, the query would run for less than 7 seconds. Worst case scenario, it would take 30 seconds if there's a lot of other queries running.
 
-Wrong! It didn't take 7 or 30 seconds. In fact, it failed to finish at all. The production database apparently chose a different query plan,
+Wrong! It didn't take 7 or 30 seconds. In fact, it failed to finish at all. The production database chose a different query plan,
 and almost committed suicide.
 
-The takeaway is that even if your query is thoroughly tested in test environment, you should not make too strong assumptions about its performance in production.
+Even if test your query thoroughly in test environment, you should not make too strong assumptions about its performance in production.
 You just have to try it.
 
 ### Conclusion: Question and experiment
-Most of the time, optimizing query performance is a rigorous process—you rearrange clauses, trim off unnecessary data,
-choose the most efficient functions, measure changes, and repeat. We have covered some of them, and there are is a lot more to try.
+Most of the time, optimizing query performance is a rigorous proces. You rearrange clauses, trim off unnecessary data, choose the most efficient functions, measure changes, and repeat. We have covered some some tricks, and there are is a lot more to try.
 But sometimes, queries will be slow, no matter how much love and care you give them.
 
-Then, you have to think more broadly. Can you get the data from somewhere else, split the query into parts, or redefine the database structure?
+Then, you have to think more broadly. Can you get the data from somewhere else? Split the query into parts? Redefine the database structure?
 Do you actually need to return all data in this query? Who uses it? What for?
 
 Always question your assumptions. Don't feel foolish if you follow a hunch. Your instincts will get better over time.
