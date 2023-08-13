@@ -8,7 +8,7 @@ categories: [programming, sql]
 
 How you query your database matters. Sloppy queries can bring your website to a halt. Effective queries can make your big data analytic platform run fast.
 
- This article shares tips I use to make database queries work better.
+This article shares tips I use to make database queries work better.
 I don't know all the tricks out there. We will explore those that actually helped me solve problems in production applications. 
 For now, we will cover only tabular databases that support SQL–the most common group. Moreover, we will focus on techniques that don't change the database.
 
@@ -27,9 +27,9 @@ We will generally work with a subset of SQL that most SQL-like databases support
 
 
 Tabular database is not the same thing as a relational database. For example, Snowflake is tabular, but it won't let you define relational constraints.
-You can create relations among datapoints even in non-relational databases. Yet, only relational databases will enforce them for you. E.g., they will
+You can create relations among datapoints even in non-relational databases. Yet only relational databases will enforce them for you. E.g., they will
 not let you delete a `user` without deleting their `posts`.
-Databases for analytics tend to use SQL and be tabular but non-relational. But, several modern databases support a subset of SQL syntax and are not tabular.
+Databases for analytics tend to use SQL and be tabular but non-relational. Several modern databases support a subset of SQL syntax and are not tabular.
 Here are some examples of major databases and their properties:
 
 | database                                                              | uses relations constraints | uses SQL | is tabular |
@@ -96,13 +96,13 @@ In real applications, both OLAP and OLTP queries can get a lot more complex than
 But let's not get ahead of ourselves.
 
 Our examples will work with [PostgresSQL](https://www.postgresql.org/) (aka Postgres), as an OLTP representative.
-I am planning to add more database examples to the [playground]((https://github.com/hrubanj/database-playground)) repository in the future.. Currently, I am thinking of
+I am planning to add more database examples to the [playground]((https://github.com/hrubanj/database-playground)) repository in the future. Currently, I am thinking of
 [Apache Druid](https://druid.apache.org/) and [Clickhouse](https://clickhouse.com/) to get some realistic OLAP examples.
 
-Most techniques that we will cover will be useful for both OLTP and OLAP. In some cases, we will see that they work only on one type of database.
+Most techniques that we will cover are useful for both OLTP and OLAP. In some cases, we might notice that they work only on one type of database.
 This is, among other reasons, because OLAP databases try to be smarter. Since they don't need to respond within milliseconds, they can take more time to optimize query execution.
 The benefit of this is that a poorly written query can perform well in OLAP. The negative is that fine-tuning such query might not always work, because the query 
-optimizer might translate both version to the same plan.
+optimizer can translate both version to the same plan.
 
 If you want to know more about different database types, read  [Designing Data-Intensive Applications](https://dataintensive.net/) by Martin Kleppmann.
 It is by far the best book on (not only) databases that I have read so far.
@@ -116,7 +116,7 @@ about this on StackExchange. We won't delve into its details here. Let's rather 
 ### Understand your data
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
 to make sure that these assumptions work well in **most** situations. But you can still do better than them.
-While a database can guess that a join will produce something between 1 and 30 million rows, you might know that it will be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you might want to push it to a subquery.
+While a database can guess that a join will produce something between 1 and 30 million rows, you might know that it will be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you will push it to a subquery.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
 
 Suppose we want to display the last five visits of our website:
@@ -129,7 +129,7 @@ limit 5
 ```
 This is a straightforward query. We order the visits by timestamp, and then select the first five. Since the dataset is small,
 it doesn't even take that long (around 200 ms on my computer).
-If we know that our website visited regularly, we can make an assumption when the last five visits occurred. It can be the last 10 minutes, 1 day, or whatever seems reasonable.
+If we know that our website is visited regularly, we can make an assumption when the last five visits occurred. It can be the last 10 minutes, 1 day, or whatever seems reasonable.
 
 Then, we don't need to sort the whole table:
 ```sql
@@ -159,7 +159,7 @@ We will discuss indexes and their OLAP counterparts in a later section.
 Imagine that you wrote a query that is pretty fast and seems to work well. But when you run it in production, it
 starts to take ages or hangs indefinitely. Why?
 
-There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it, or it might not have the same amount of resources available as in your test environment. Furthermore, your application might run the query several times in parallel.
+There is a fair chance that your query is not the only one running on the database. Other queries might be blocking it, or it might not have the same amount of resources available as in your test environment. Furthermore, your application can run the query several times in parallel.
 Try to emulate production scenario. If the query should run 50 times in parallel in production, run it 100 times in parallel to make sure that the database can handle it.
 
 In postgres, you can list active queries with this command:
@@ -180,7 +180,7 @@ that the query plan is suboptimal given your data. For example if order of joins
 at the end. In the latter case, you might try to push query planner into picking a better plan (see the section on Hinting).
 
 I think execution plan visualizers are the most useful optimization tool.
-While you might struggle to find bottlenecks in the plan description, you will often see them on the first look at its visualization.
+While you might struggle to find bottlenecks in the plan description, you will often see them from the first look at its visualization.
 Some SAAS database providers embed visualizers to their service. There are also free versions for many databases, e.g. for Postgres.
 
 Let's see this on a simple example query. We want to find out if people are more likely to comment on posts from poster's with the same email domain as they have. (Spoiler alert: They should not since the data is pseudo-random).
@@ -350,7 +350,7 @@ where p.time_created > '2023-01-01'
 ```
 As you can see, the `v.timestamp > '2023-01-01'` condition is not necessary. The inner join guarantees that `v.timestamp >= p.time_created` and `p.time_created > '2023-01-01'` is already in the `WHERE` clause.
 
-Yet, adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 20 % on my machine.
+Yet adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 20 % on my machine.
 
 
 ### Aggregation vs. sorting
@@ -455,7 +455,7 @@ On my computer, the second query runs about 30 % faster.
 ### Use materialized views
 I've seen countless examples of tables named like order_**advanced**, order_**enriched**, order_**v2** order_**extra**.
 These boastful suffixes usually mean that the order_**suffix** table is the original **order** table with a few columns joined from another one.
-I've seen the horror in the eyes of hardcore programmers when they heard of such crimes against the laws of data modelling.
+I've also seen the horror in the eyes of hardcore programmers when they heard of such crimes against the laws of data modelling.
 The truth is that tables like these are common in analytical workflows, and, I daresay, even useful.
 
 Imagine you have a team of ten analysts, each of them analyzing some aspect of sales. They all need data about orders and transportation costs,
@@ -575,8 +575,8 @@ I will not show examples with clustering or partitioning keys here. We would nee
 
 ### Hinting
 Hinting is a way to tell the query planner how to execute the query.
-You can do it either explicitly (e.g. via pg_hint_plan in Postgres), or by tweaking the query, so that the planner selects the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in the foot. Explicit hinting interferes with query planner. It can lock you into a suboptimal execution plan, even if the planner could find a better one.
-Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest.  If you use hints, you restrict its freedom of choice.
+You can do it either explicitly (e.g. via `pg_hint_plan` in Postgres), or by tweaking the query, so that the planner selects the optimal plan. I try to stay away from the first option. Unless the distribution of data is very stable, you can shoot yourself in the foot. Explicit hinting interferes with query planner. It can lock you into a suboptimal execution plan, even if the planner could find a better one.
+Normally, Postgres' cost-based  optimizer estimates costs of different possible plans and selects the cheapest. If you use hints, you restrict its freedom of choice.
 There are situations when plan hinting is the best strategy, but, from my experience, they are rare.
 If you are not sure whether to use explicit plan hinting, don't. 
 
@@ -620,7 +620,7 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-The execution time went from roughly 200 ms to 2 seconds, and I was not happy.
+The execution time went from roughly 200 ms to more than 30 seconds, and I was not happy.
 When I kept the join there, the performance remained similar to the original.
 I took the subquery out and started looking into it, but then came another surprise. In isolation, the execution time did not worsen without the join.
 It turned out that when it was a part of a larger query, the join gave a hint to the query optimizer, and it chose a better plan.
@@ -642,10 +642,10 @@ where e."dateDeleted" is null
 ;
 ```
 The sad ending to this story is that I was not able to discover the reason for the difference.
-When I tried to analyze the query plan on my computer, both version were similarly fast.
+When I tried to analyze the query plan on my computer, both version started to take similar time.
 I did not go as far as trying to run Postgres' analyze on the production database, as it might not end up well.
 
-The moral of the story is not that you should go crazy adding unnecessary joins to your queries, and hope that it will speed them up.
+The moral of this story is not that you should go crazy adding unnecessary joins to your queries, and hope that it will speed them up.
 But you should be careful when optimizing. Query planner can sometimes get hints from things that almost seem like a programmer's mistake.
 
 ### Validate in production
