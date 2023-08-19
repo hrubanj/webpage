@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Journeyman's Notes on Optimizing SQL Queries"
+title:  "Journeyman's Tips on Optimizing SQL Queries"
 date:   2023-05-10 21:00:00 +0000
 categories: [programming, sql]
 ---
