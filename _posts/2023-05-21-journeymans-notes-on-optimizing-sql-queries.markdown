@@ -14,7 +14,7 @@ This article shares tips I use to make database queries work better.
 I don't know all the tricks out there. We will explore those that actually helped me solve problems in live
 applications.
 For now, we will cover only tabular databases that support SQL–the most common group. Moreover, we will focus on
-techniques that don't change the database.
+techniques that don't change the database structure.
 
 If you want to run the examples yourself, go to [this](https://github.com/hrubanj/database-playground) repository and
 follow its README.
@@ -26,8 +26,10 @@ let's unpack it.
 
 Tabular databases organize data into tables.
 By SQL support, we mean that we can use the structured query language to query them.
+This description fits a broad range of databases. It will allow us to cover many techniques that work for most of them
+without getting into details of specific databases.
 
-We won't need the database to support the full SQL standard. Otherwise, we would end up
+We won't need our databases to support the full SQL standard. Otherwise, we would end up
 philosophizing if any full [ANSI-compliant](https://blog.ansi.org/sql-standard-iso-iec-9075-2023-ansi-x3-135/) database
 exists.
 We will generally work with a subset of SQL that most SQL-like databases support. When we use any features of a specific
@@ -51,15 +53,15 @@ Here are some examples of major databases and their properties:
 | [MongoDB](https://www.mongodb.com/)                                   | ❌                          | ❌        | ❌          |
 
 You might have noticed that we haven't included every possible combination.
-Some databases use tables as an underlying storage but do not support SQL queries (such
-as [EdgeDB](https://www.edgedb.com/)).
-Others are tabular and relational but lack SQL support (such as. [Dataphor](https://github.com/dataphor/Dataphor)).
-We could keep adding even more unusual combinations.
+For example, [EdgeDB](https://www.edgedb.com/) is relational, does not support SQL queries, and it is not tabular, even though
+it uses tables as an underlying storage.
+[Dataphor](https://github.com/dataphor/Dataphor), on the other hand, is both tabular and relational but lacks SQL support too.
+
 Most databases I've come across fit into one of the categories listed in the table above.
 
 ### Premature optimization
 
-We hinted that you should improve your queries to improve you applications' performance. But not always.
+We hinted that you should optimize your queries to improve your applications' performance. But not always.
 Is it a problem that a query takes ten minutes? What if it runs once a day, does not block any other queries, and
 processes terabytes of data? Maybe not a problem.
 What if it needs a huge Snowflake cluster, and the ten minutes cost you a ton of money. Well, then it might be a
@@ -71,8 +73,8 @@ Before you start optimizing, know the metric you need to improve. It can be clus
 of an endpoint, duration of some job, and many other things.
 Only then, you can actually decide how to optimize.
 
-Only then can you decide how to optimize. Sometimes, time spent might outweigh potential savings. Other times, a larger
-database is more helpful.
+Only then can you decide how to optimize. Sometimes, time you spend optimizing may outweigh potential savings. Other times, a larger
+database will give you the performance boost more cheaply.
 
 Occasionally, fine-tuning SQL queries is your best bet. And that is the fun part that we will deal with in the rest of
 this article.
@@ -88,7 +90,7 @@ Although the tables are modest in size, they're sufficiently large to show most 
 ### Horses for courses (OLAP vs. OLTP)
 
 Are you working with the right type of database?
-You can copy-paste most of your Postgres queries and run them in Snowflake. Yet these databases are useful for different
+You can copy-paste most of your Postgres queries and run them in Snowflake. Yet, these databases are useful for different
 purposes.
 Postgres optimizes for fetching individual rows quickly. Snowflake shows its strength on large data aggregations.
 On the flipside, you shouldn't build a data lake on Postgres. And you should definitely avoid using Snowflake for
@@ -151,8 +153,8 @@ You might have heard that SQL is a declarative language–you tell the database 
 get it.
 We will see that how you write your queries impacts their performance. Some people argue that this
 means that SQL is not declarative. Others say that declarativity does not guarantee that the database will always choose
-the optimal solution. There is a
-nice [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
+the optimal solution. There is an
+interesting [discussion](https://softwareengineering.stackexchange.com/questions/200319/is-sql-declarative)
 about this on StackExchange. We won't delve into its details here. Let's rather show that query structure matters on
 examples.
 
@@ -161,7 +163,7 @@ examples.
 Databases make assumptions about your data. Tons of smart people have spent years optimizing and testing databases
 to make sure that these assumptions work well in **most** situations. But you can still do better than them.
 While a database can guess that a join will produce something between 1 and 30 million rows, you might know that it will
-be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you will push it to a subquery.
+be exactly one million. Or you might know that a filter removes 99 % rows in a table, so you will force the database to execute it as soon as possible.
 Or you might know that a table includes duplicate join keys, so, you deduplicate it before joining.
 
 Suppose we want to display the last five visits of our website:
@@ -204,6 +206,8 @@ order by id desc limit 5
 ```
 
 This is about 80 times faster than the previous version, and 160 times faster than the original one.
+This last query did not need to scan the the whole table, but just its index. Scanning
+an index is almost always faster than scanning the whole table.
 
 We will discuss indexes and their OLAP counterparts in a later section.
 
@@ -231,7 +235,7 @@ This query is database-specific. You will need to read documentation to get its 
 
 ### Use diagnostic tools, particularly visualizers
 
-Databases usually have a way to display how they decided to execute your query, i.e. display the query plan.
+Databases usually have a way to display how they decided to execute your query, i.e. describe the query plan.
 Studying it can reveal what the bottlenecks are. When I am optimizing a query, it is usually a back and forth between
 checking the plan and tweaking the query.
 
@@ -243,16 +247,17 @@ Hinting).
 I think execution plan visualizers are the most useful optimization tool.
 While you might struggle to find bottlenecks in the plan description, you will often see them from the first look at its
 visualization.
-Some SaaS database providers embed visualizers to their service. There are also free versions for many databases, e.g.
-for Postgres.
+Some SaaS database providers embed visualizers to their service. For many databases, there are also free versions.
 
 Let's see this on a simple example query. We want to find out if people are more likely to comment on posts from
-poster's with the same email domain as they have. (Spoiler alert: They should not since the data is pseudo-random).
+poster's with the same email domain as they have. (Spoiler alert: They shouldn't since the data is pseudo-random).
+
+
 
 ```sql
 explain
 (analyse , buffers , verbose)
-select split_part(u1.email, '@', 2) as poster_domail,
+select split_part(u1.email, '@', 2) as poster_domain,
        split_part(u2.email, '@', 2) as commenter_domain,
        count(*)                     as cnt
 from comment c
@@ -265,6 +270,10 @@ order by 1, 2
 ```
 
 This is the query plan output by Postgres:
+
+<font size=1>*The 'cost' is Postgres' estimate of how expensive it is to execute part of the query.
+The actual time shows how long it actually took. If there's a big difference between the two, the query planner
+is more likely to choose a suboptimal plan. Consult Postgres [documentation](https://www.postgresql.org/docs/current/sql-explain.html) for more details.*<font>
 
 | QUERY PLAN                                                                                                                           |
 |:-------------------------------------------------------------------------------------------------------------------------------------|
@@ -303,7 +312,7 @@ This is the query plan output by Postgres:
 | Timing: Generation 8.097 ms, Inlining 0.000 ms, Optimization 5.882 ms, Emission 44.183 ms, Total 58.162 ms                           |
 | Execution Time: 1150.066 ms                                                                                                          |
 
-Sure, this query is not complex, so, reading the query plan is straightforward once you get used to it.
+Sure, this query is not complex, so, reading the query plan isn't than complicated once you get used to it.
 
 But let's compare it to the visualization of the same thing:
 
@@ -312,8 +321,8 @@ But let's compare it to the visualization of the same thing:
 If you plug the textual plan into, e.g. Postgres Explain Visualizer, you get a
 nice [output](https://explain.dalibo.com/plan/dbg82a4289a2f8aa) like the above.
 
-Can you see how we could speed this query up? Suddenly, it becomes pretty obvious. We are not getting many index hits,
-right?
+Can you see how we could speed this query up? Suddenly, it becomes much clearer. We are not using indexes,
+right? The graph shows several expensive filtering operations, and all of them scan the whole table.
 
 ### Clean up
 
@@ -405,6 +414,7 @@ having sum(c.upvotes_count) > 0
 order by 2 desc limit 10
 ;
 ```
+All versions of this query (using only `WHERE`, or both `WHERE` and `HAVING`) take slightly above 300 ms on my machine.
 
 We need a more complex query to benefit from putting logically unnecessary conditions to the `WHERE` clause.
 
@@ -418,7 +428,7 @@ select p.id      as post_id,
        v.user_id as visitor_id,
        u1.name   as poster_name,
        u2.name   as poster_name,
-       row_number() over (partition by p.id, v.id order by v.timestamp) as rn
+       row_number() over (partition by v.id order by v.timestamp) as rn
 from post p
          inner join "visit" v on v.timestamp between p.time_created and p.time_created + interval '30 days'
     inner join "user" u1
@@ -434,7 +444,7 @@ where p.time_created
 As you can see, the `v.timestamp > '2023-01-01'` condition is not necessary. The inner join guarantees
 that `v.timestamp >= p.time_created` and `p.time_created > '2023-01-01'` is already in the `WHERE` clause.
 
-Yet adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 20 % on my machine.
+Yet adding the `v.timestamp > '2023-01-01'` condition speeds up the query by about 40 % on my machine (500 ms vs. 300 ms).
 
 ### Aggregation vs. sorting
 
@@ -472,10 +482,10 @@ from visit
 ;
 ```
 
-This does the same thing, is more memory efficient, and about 50 % faster. On a large table, the speed difference will
+This does the same thing, is more memory efficient, and about 50 % faster on my computer. On a large table, the speed difference will
 be even more pronounced.
 
-This example is so simplistic that it is hard to overlook the problem. But, once you start looking for this pattern, you
+You won't probably see such a clear example in the real world. But, once you start looking for this pattern, you
 will spot it more often than you'd expect.
 
 ### Subqueries
@@ -522,7 +532,7 @@ where u.name = 'Alice Vaughan'
 ;
 ```
 
-However, an experiment shows that the version without CTE is actually faster.
+However, an experiment shows that the version without CTE is actually faster (630 vs. 350 ms on my computer).
 
 Let's try another example. We want to get names of people who visited our site more than 100 times.
 A straightforward query to do this would be:
@@ -551,7 +561,7 @@ order by u.name
 ;
 ```
 
-On my computer, the second query runs about 30 % faster.
+On my computer, the second query runs about 40 % faster (360 ms vs. 220 ms).
 
 ### Use materialized views
 
@@ -633,7 +643,8 @@ If your query hits an index, you are in luck. Indices are the most common tool d
 or filtering records.
 
 When your query hits an index, the database does not need to scan the whole table, and thus needs to read much fewer
-data.
+data. (This StackOverflow [answer](https://stackoverflow.com/a/1130) explains it well.
+
 Indices work primarily in OLTP databases. If you can, you should directly compare against the index values in
 the `WHERE` clause or join and not use functions on the indexed columns. If you do, the database might not be able to
 use the index.
@@ -642,12 +653,14 @@ use the index.
 Be careful when you read about indexes in OLAP. Snowflake, for example, lets you define a primary key. You might think
 that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
 Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview)
-that they use constraints as a documentation feature. I am quite sure
-this has confused many people. Seeing duplicates in a primary key column certainly confused me.
+that they use constraints as a documentation feature. Creating a primary key in Snowflake does not even create an index.
+I am quite sure this has confused many people. Seeing duplicates in a primary key column certainly confused me.
 
 In OLAP databases, you might encounter clustering, partitioning, or some other keys. These usually
 divide table into
-chunks. If we take our `post` table from previous examples and set clustering key to `updated_at` column, the database
+chunks. (We won't go into too much detail here as partitioning and clustering techniques are database-specific.)
+
+If we take our `post` table from previous examples and set clustering key to the `updated_at` column, the database
 will ideally create chunks that cover mutually exclusive time intervals of `updated_at` .
 When your query hits a clustering or partitioning key, the database can skip all chunks that do not contain the key.
 If you do not hit the key, it needs to check all partitions.
@@ -660,6 +673,7 @@ in a reasonably similar pace in time, and you usually need to work with data for
 
 Clustering keys, for example in [Snowflake](https://docs.snowflake.com/en/user-guide/tables-clustering-keys),
 are more flexible. You can define clustering key on multiple columns.
+BigQuery actually allows both partitioning and clustering. You can use any [combination](https://cloud.google.com/bigquery/docs/clustered-tables) of the two methods.
 
 Clustering or partitioning is primarily useful on larger tables (think > 1 TB). With smaller ones, the overhead of
 shuffling data might not be worth it. If you are paying for the time that database does something, as in Snowflake, you
@@ -694,13 +708,16 @@ Now, we are at 10 ms, so 10 times speedup. The database needs to do index-only s
 of rows, it does not need to read any data from the table.
 
 But even a query that needs to read some data, will be faster thanks to an index.
-
+Let's count the number of unique posters in the same timeframe.
 ```sql
-select count(distinct user_id) as post_count
+select count(distinct user_id) as posters_count
 from post
 where time_created between '2021-01-01' and '2021-12-31'
 ;
 ```
+
+As in the previous query, we need to filter the table to the relevant timeframe.
+But here, we also have to read it and count distinct posters.
 
 This takes about 100 ms without the index on `time_created` and about 40 ms with it.
 
@@ -750,7 +767,7 @@ parts.
 While refactoring the code, I realized that the `handle` column is not used anywhere, so, I removed it. The output no
 longer included any data from the `entrytypes` table.
 You might think that the `entrytypes` table still filters something since I am using an inner join. But it does not,
-even though you cannot see it from the query alone.
+even though you cannot see it from the query alone:
 I am joining `entrytypes` on `entries` on `entries.typeId` = `entrytypes.id`. `entries.typeId` is a non-nullable column
 with a foreign key to `entrytypes.id`, and
 `entrytypes.id` is a primary key. Hence, if I remove the excessive join, the output will be identical.
@@ -796,10 +813,8 @@ where e."dateDeleted" is null
   and e2."postDate" is not null
 ;
 ```
-
 The sad ending to this story is that I was not able to discover the reason for the difference.
-When I tried to analyze the query plan on my computer, both version started to take similar time.
-I did not go as far as trying to run Postgres' analyze on the production database, as it might not end up well.
+When I tried to run Postgres' analyze on the version without the unnecessary join, it just kept running forever.
 
 The moral of this story is not that you should go crazy adding unnecessary joins to your queries, and hope that it will
 speed them up.
