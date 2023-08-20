@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Journeyman's Tips on Optimizing SQL Queries"
-date: 2023-08-20 12:00:00 +0000
+date: 2023-08-20 10:00:00 +0000
 categories: [ programming, sql ]
 ---
 
@@ -181,7 +181,7 @@ order by timestamp desc
 ;
 ```
 
-This is a straightforward query. We order the visits by timestamp, and then select the first five. Since the dataset is
+This is a straightforward query. We order the visits by `timestamp`, and then select the first five. Since the dataset is
 small,
 it doesn't even take that long (around 200 ms on my computer).
 Now, if we're aware that our website is getting regular visitors, we can make an educated guess about when the last five
@@ -214,7 +214,7 @@ This is about 80 times faster than the previous version, and 160 times faster th
 This last query did not need to scan the whole table, but just its index. Scanning
 an index is almost always faster than scanning the whole table.
 
-We will discuss indexes and their OLAP counterparts in a later section.
+We will discuss indices and their OLAP counterparts in a later section.
 
 ## What else is running on your database?
 
@@ -274,10 +274,12 @@ order by 1, 2
 
 This is the query plan output by Postgres:
 
-<font size=1>*The 'cost' is Postgres' estimate of how expensive it is to execute part of the query.
+*<font size=1>The 'cost' is Postgres' estimate of how expensive it is to execute part of the query.
 The actual time shows how long it actually took. If there's a big difference between the two, the query planner
 is more likely to choose a suboptimal plan. Consult
-Postgres [documentation](https://www.postgresql.org/docs/current/sql-explain.html) for more details.*<font>
+Postgres [documentation](https://www.postgresql.org/docs/current/sql-explain.html) for more details.</font>*
+
+
 
 | QUERY PLAN                                                                                                                           |
 |:-------------------------------------------------------------------------------------------------------------------------------------|
@@ -316,7 +318,7 @@ Postgres [documentation](https://www.postgresql.org/docs/current/sql-explain.htm
 | Timing: Generation 8.097 ms, Inlining 0.000 ms, Optimization 5.882 ms, Emission 44.183 ms, Total 58.162 ms                           |
 | Execution Time: 1150.066 ms                                                                                                          |
 
-Sure, this query is not complex, so, reading the query plan isn't than complicated once you get used to it.
+Sure, this query is not complex, so, reading the query plan isn't that complicated once you get used to it.
 
 But let's compare it to the visualization of the same thing:
 
@@ -325,8 +327,8 @@ But let's compare it to the visualization of the same thing:
 If you plug the textual plan into, e.g. Postgres Explain Visualizer, you get a
 nice [output](https://explain.dalibo.com/plan/dbg82a4289a2f8aa) like the above.
 
-Can you see how we could speed this query up? Suddenly, it becomes much clearer. We are not using indexes,
-right? The graph shows several expensive filtering operations that scan the whole table.
+Can you see how we could speed this query up? Suddenly, it becomes much clearer. We are not using indices,
+right? The graph shows several expensive operations that scan the whole table.
 
 ### Clean up
 
@@ -419,7 +421,7 @@ order by 2 desc limit 10
 ;
 ```
 
-All versions of this query (using only `WHERE`, or both `WHERE` and `HAVING`) take slightly above 300 ms on my machine.
+Both versions of this query (using only `WHERE`, or both `WHERE` and `HAVING`) take slightly above 300 ms on my machine.
 
 We need a more complex query to benefit from putting logically unnecessary conditions to the `WHERE` clause.
 
@@ -657,7 +659,7 @@ the `WHERE` clause or join and not use functions on the indexed columns. If you 
 use the index.
 [This](https://www.youtube.com/watch?v=BHwzDmr6d7s) video provides a nice illustration.
 
-Be careful when you read about indexes in OLAP. Snowflake, for example, lets you define a primary key. You might think
+Be careful when you read about indices in OLAP. Snowflake, for example, lets you define a primary key. You might think
 that it creates and index and enforces its uniqueness as a well-behaved database would. It doesn't.
 Snowflake says in their [documentation](https://docs.snowflake.com/en/sql-reference/constraints-overview)
 that they use constraints as a documentation feature. Creating a primary key in Snowflake does not even create an index.
@@ -687,7 +689,7 @@ shuffling data might not be worth it. If you are paying for the time that databa
 should also consider that clustering large table takes a lot of time and needs to happen regularly. Otherwise, the
 chunks won't be balanced, and their benefits will fade.
 
-Indexes are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up
+Indices are the most flexible. You can usually define as many as you want. But bear in mind that each index takes up
 space and slows down writes to the corresponding table.
 
 Let's see how we can speed up a simple query by adding an index. Imagine we want to tally the posts created within a
@@ -822,7 +824,7 @@ where e."dateDeleted" is null
 ;
 ```
 
-The sad ending to this story is that I was not able to discover the reason for the difference.
+The sad ending to this is that I was not able to discover the reason for the difference.
 When I tried to run Postgres' analyze on the version without the unnecessary join, it just kept running forever.
 
 The moral of this story is not that you should go crazy adding unnecessary joins to your queries, and hope that it will
