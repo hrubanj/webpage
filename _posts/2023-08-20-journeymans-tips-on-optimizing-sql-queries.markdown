@@ -47,7 +47,7 @@ Here are some examples of major databases and their properties:
 
 | database                                                              | uses relations constraints | uses SQL | is tabular |
 |-----------------------------------------------------------------------|----------------------------|----------|------------|
-| [PostreSQL](https://www.postgresql.org/)                              | ✅                          | ✅        | ✅          |
+| [PostgreSQL](https://www.postgresql.org/)                             | ✅                          | ✅        | ✅          |
 | [Snowflake](https://docs.snowflake.com/en/sql-reference/snowflake-db) | ❌                          | ✅        | ✅          |
 | [CosmosDB](https://learn.microsoft.com/en-us/azure/cosmos-db/)        | ❌                          | ✅        | ❌          |
 | [MongoDB](https://www.mongodb.com/)                                   | ❌                          | ❌        | ❌          |
