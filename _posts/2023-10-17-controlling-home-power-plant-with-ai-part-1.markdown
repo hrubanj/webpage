@@ -103,9 +103,21 @@ Many things can be important, but having a simple default solution will allow us
 more intelligence.
 
 ### Historical data - price trends and defaults
-Assumptions about the prices: more in the morning and evening, different on weekends.
-Findings: the above is true. Plus more even distribution in winter, probably due to heating.
-Sometimes negative prices. More detail on the distribution throughout the day and pictures.
+Looking into the historical data reveals some patters that we would expect.
+Electricity prices are higher in the morning and in the evening, and lower during the day. This is most likely
+because in the morning waking up, making breakfast, commuting etc. In the evening, people come home, cook dinner,
+watch TV, and so on. During the day, people are at work, so they consume less electricity.
+This pattern does not hold on weekends, when people many people are sleeping in, and / or not commuting.
+The morning peak is significantly smaller on weekends, and the price is generally lower throughout the day.
+[picture 1]
+
+The peaks are not so prominent in winter, probably because of heating during the day.
+[picture 2, january vs. july]
+
+This shows us that we should expect high prices from 6 AM to 9 AM, and from 5 PM to 9 PM on weekdays, except
+for weekend mornings, and that we should calibrate our assumptions for winter and summer.
+
+This gives us a good starting configuration.
 
 ### Implementation
 We keep the spirit of simplicity also for the actual implementation.
