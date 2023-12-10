@@ -22,12 +22,25 @@ categories: [ programming, optimization, electricity, ml, ai ]
   - drilldown into variables prediction and optimization
   - business evaluation
 ### Introduction
+!!!
 
 ### What are we trying to solve?
 We have a power plant that generates electricity when sun is shining. We can use it, charge a battery with it, or send it to the grid.
 Using electricity directly or from battery saves us money for buying electricity from the grid. Selling electricity to the grid makes us money.
 
 ### The big picture
+On the face of it, this problem is really simple. We are just deciding whether to sell or store electricity.
+But it can grow almost arbitrarily complex–we can refine our predictions of weather consumption, prices, effectiveness
+of charging and so on.
+
+We need to be strict about what we want to achieve, or we'll end up in analysis paralysis.
+From the start, we'll be aggressively pursuing the Pareto principle. We'll use the least amount of effort
+to create somewhat functional solution, and then we'll improve it in iterations. We'll only improve 
+the parts that seem to bring the most benefit at the time.
+
+You might be cringing a bit when reading the following sections–we'll be making a lot of bold assumptions,
+and using some atrocious implementation shortcuts. But that's ok. It will allow us to see what is important
+and where the basic ugly solution actually works well enough.
 
 ### Variables under control
 Own consumption always takes precedence regardless of our settings. This is actually economically rational, since
@@ -90,4 +103,66 @@ Many things can be important, but having a simple default solution will allow us
 more intelligence.
 
 ### Historical data - price trends and defaults
+Assumptions about the prices: more in the morning and evening, different on weekends.
+Findings: the above is true. Plus more even distribution in winter, probably due to heating.
+Sometimes negative prices. More detail on the distribution throughout the day and pictures.
+
+### Implementation
+We keep the spirit of simplicity also for the actual implementation.
+
+The solution only needs to be able to read a configuration file and set the power plant mode based
+on configuration setting for current time.
+
+We'll use a hierarchical configuration. Each entry has a start time, end time, and a mode. Entries
+can also have specific date, weekdays, or none of this. Date-specific entries take precedence over
+weekday-specific entries, which take precedence over entries without any of these. If no entry is
+found for given time, the default mode is used.
+This lets users define exact mode based on assumed price and consumption, but lets us also define
+defaults that should function reasonably well if the user does not want to configure the power plant too often.
+
+This means that we need a script that regularly checks the configuration file and sets the mode.
+We'll use a cron job for this and run it on a cheap VPS.
+
+Setting the power plant mode is a bit tricky, because the manufacturer does not provide any public API for that.
+Hence, we need to figure out what endpoints are called from the manufacturer's UI and replicate that.
+This is also a potential point of failure, because the manufacturer might change the UI and break our script.
+
+Forcing the user to upload configuration to the server might be too much of a stretch, so we'll use
+a rudimentary Telegram-based API for this. 
+We create a dedicated conversation for controlling the power plant. The user can upload the configuration
+to the conversation and tag the telegram bot. The bot always reads the latest configuration and sets the mode.
+If the user wants to deactivate the script, they can send a config message without any config file.
+
+The script also logs the results of its run to the conversation. So, the user will see that the a power plant
+mode was either set, or the config was invalid.
+
+For additional monitoring, we use a free trial of Sentry.
+
+### Results
+This initial solution should mainly save user's time. We did not expect that it would outperform
+user configuring the power plant manually, because it only carries out explicit user configuration.
+What we can do now and how well it serves us.
+- how user is able to work with it
+
+### Making it intelligent
+Our current solution is basically a scheduler.
+It requires manual input to function reasonably well.
+Someone should configure it every day, otherwise it will decide based on rough approximations.
+This is still better than having to switch the power plant manually every hour, but there is room for improvement.
+
+There are two main ways in which we can improve the solution–adding automation, and making it more user friendly.
+
+We will almost certainly go for the automation first. It should not only be more fun to implement,
+but it will also reduce the need for manual input, and thus should be more profitable.
+I have already sketched out a few variables that the optimization will account for in the previous sections.
+Keeping the spirit of our Pareto approach, we will start with a simple solution that uses a lot of heuristics,
+and we will start by replacing those that seem to bring the most improvement.
+
+As for user-friendliness, the UI is quite terrible for a non-technical user. Producing valid JSON files can be a bit complicated
+if you have no experience with them. There is no validation, so you have to wait if the script will work or not.
+We will not focus on the UI in the next iteration too much, but we might do some small quality of life tweaks.
+If all goes well, we will create a proper UI in the next stage.
+
+So, stay tuned for the next part! And look forward to some actual machine learning.
+
 
