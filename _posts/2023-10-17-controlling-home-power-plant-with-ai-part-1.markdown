@@ -22,11 +22,20 @@ categories: [ programming, optimization, electricity, ml, ai ]
   - drilldown into variables prediction and optimization
   - business evaluation
 ### Introduction
-!!!
+My parents installed solar panels on their roof. This lets them save electricity costs, and also sell excess electricity to the grid.
+Since they are selling for spot prices, choosing when to sell can make a big difference in the profit.
+That is an interesting problem to solve, so my brother and I decided to help them with a bit of automation and AI.
+
+The first part of this series will be more of an overview. We won't go too deep into implementation details,
+as it might get too long without conveying the main points. In following parts, we'll build upon the initial
+solution and dig a bit deeper.
+
 
 ### What are we trying to solve?
 We have a power plant that generates electricity when sun is shining. We can use it, charge a battery with it, or send it to the grid.
 Using electricity directly or from battery saves us money for buying electricity from the grid. Selling electricity to the grid makes us money.
+
+[mermaid diagram -> power plant, battery, grid, consumption, sell, buy]
 
 ### The big picture
 On the face of it, this problem is really simple. We are just deciding whether to sell or store electricity.
@@ -41,6 +50,9 @@ the parts that seem to bring the most benefit at the time.
 You might be cringing a bit when reading the following sections–we'll be making a lot of bold assumptions,
 and using some atrocious implementation shortcuts. But that's ok. It will allow us to see what is important
 and where the basic ugly solution actually works well enough.
+
+Yes, this also means that there won't by much AI in the first iteration. I'll explain why in the following sections.
+Trust me, it will make sense. If you stick around for the next parts, we'll give you all the AI you could hope for.
 
 ### Variables under control
 Own consumption always takes precedence regardless of our settings. This is actually economically rational, since
