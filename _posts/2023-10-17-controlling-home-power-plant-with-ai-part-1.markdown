@@ -166,7 +166,7 @@ The script also logs the results of its run to the conversation. So, the user wi
 mode was either set, or the config was invalid.
 
 For additional monitoring, we use a free trial of Sentry.
-
+[diagram, telegram channel, server with script, power plant API]
 ### Results
 This initial solution should mainly save user's time. We did not expect that it would outperform
 user configuring the power plant manually, because it only carries out explicit user configuration.
