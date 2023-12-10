@@ -27,8 +27,13 @@ Since they are selling for spot prices, choosing when to sell can make a big dif
 That is an interesting problem to solve, so my brother and I decided to help them with a bit of automation and AI.
 
 The first part of this series will be more of an overview. We won't go too deep into implementation details,
-as it might get too long without conveying the main points. In following parts, we'll build upon the initial
+as we'd get buried in them without conveying the main points. In following parts, we'll build upon the initial
 solution and dig a bit deeper.
+
+There is one caveat that I should mention. We are not experts on power plants, or electricity trading.
+We are learning a lot of the things we are writing about as we are implementing them. So, it is quite likely
+that we'll make some incorrect assumptions and we'll have to go back and fix them. We'll try to be as transparent
+as possible about this, and we'll try to correct the mistakes as soon as we find them. If you find any, please let us know.
 
 
 ### What are we trying to solve?
