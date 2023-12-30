@@ -1,26 +1,11 @@
 ---
 layout: post
-title: "Controlling home power plant with AI - Part 1
+title: "Building AI-powered Power Plant - Part 1"
 date: 2023-10-17 10:00:00 +0000
 categories: [ programming, optimization, electricity, ml, ai ]
 ---
 
-# Outline
-- problem statement
-- the big picture
-- variables under control
-- spot prices
-- purchasing vs. selling prices
-- default solution
-- naive heuristic - start without AI
-- historical data - price trends and defaults
-- own consumption
-- results
-- adding intelligence - what can be improved
-- other parts
-  - integration with software, deployment, technical monitoring
-  - drilldown into variables prediction and optimization
-  - business evaluation
+
 ### Introduction
 My parents installed solar panels on their roof. This lets them save electricity costs, and also sell excess electricity to the grid.
 Since they are selling for spot prices, choosing when to sell can make a big difference in the profit.
@@ -40,7 +25,22 @@ as possible about this, and we'll try to correct the mistakes as soon as we find
 We have a power plant that generates electricity when sun is shining. We can use it, charge a battery with it, or send it to the grid.
 Using electricity directly or from battery saves us money for buying electricity from the grid. Selling electricity to the grid makes us money.
 
-[mermaid diagram -> power plant, battery, grid, consumption, sell, buy]
+The following diagram shows the how electricity can flow between the power plant, battery, grid, and consumption.
+
+```mermaid!
+flowchart TD
+    A[fa:fa-solar-panel Power plant] -->|charges| B[fa:fa-battery Battery]
+    A -->|supplies energy for| C(fa:fa-house Consumption fa:fa-computer)
+    D[fa:fa-plug Electric grid] -->|charges| B
+    B --> |sells to|D
+    A --> |sells to|D
+    D --> |supplies energy for|C
+    B --> |supplies energy for|C
+```
+When the sun is shining, we can sell electricity to the grid, charge the battery, or consume the electricity.
+We can also charge battery from the grid and consume either directly from the grid, or from the battery.
+Some combinations of the above make sense, others less so.
+
 
 ### The big picture
 On the face of it, this problem is really simple. We are just deciding whether to sell or store electricity.
@@ -72,37 +72,41 @@ it will degrade faster.
 
 ### Spot prices
 We sell electricity to the grid at spot prices. Spot prices are hourly prices for electricity on the market. In the Czech Republic, the
-regulator (OTE)[https://www.ote-cr.cz/en/short-term-markets] determines hourly sport prices for the next day.
+regulator [OTE](https://www.ote-cr.cz/en/short-term-markets) determines hourly sport prices for the next day.
 
 The prices for the next day are published at 2 PM. This simplifies our problem, because we don't have
 to predict them.
 
 ### Purchasing vs. selling prices
-It is theoretically possible to both buy and sell electricity at spot prices. We decided not to go through
-the hassle at first, so, we did not change the contract for buying electricity.
-The buying price is almost always higher than the selling price, so it makes sense to use the electricity we generate directly.
+It is possible to both buy and sell electricity at spot prices. Both prices can then be almost the same–the sell price
+is a bit lower because of a transmission fee subtracted from it.
+
+Under our current contract, out buy price is fixed. Our solution must be ready for a situation where it is not.
+The buy price will also usually be higher than the sell price. When we switch to spot prices, it will always be higher.
+
+Interestingly, the spot price can be negative. This means that we would have to pay for selling electricity.
+It should also mean that we could get paid for consuming electricity, but we need to verify if it actually works this way.
 
 ### Default solution
 The software from the power plant manufacturer has a default solution for controlling the power plant.
-You can set the maximum battery charge level. When this is reached, the power plant starts selling electricity to the grid.
+You can, for example, set the maximum battery charge level. When this is reached, the power plant starts selling electricity to the grid.
 When the battery is discharged below a certain level, the power plant starts charging the battery.
-Own consumption is preferred over both charging and selling. This makes sense because consuming produced
-electricity will almost always be cheaper than buying it from the grid (as mentioned in the previous section).
+Own consumption is preferred over both charging and selling. This usually makes sense. Consuming produced electricity
+is less lossy than selling it or storing it in the battery. And, as mentioned before, the buy price is usually higher than the sell price.
 
-This is a reasonable default that allows for some tuning. But it does not address one important issue:
+The default allows for some tuning. But it does not address one important issue:
 It does not think ahead. It does not try to optimize when the selling should happen. It might be reasonable to
-postpone selling electricity to a peak time when it is expensive, and with the default solution, you have to do this manually.
+postpone selling electricity to a peak time when it is expensive.
+With the default solution, you have to change settings manually likely multiple times per day.
 
 ### Naive heuristic - start without AI
-What is the easiest possible solution that might improve upon the default behavior?
+What is the easiest possible solution that can make this better?
 
-Actually, a simple scheduler might do the job.
+In the first iteration, we decided to go with a rule-based scheduler.
 
 In my experience, it is always better to start with the simplest solution, and only improve upon it when the potential benefit outweighs
 the cost of improvement. The cost is not just the cost of development, but also the cost of maintenance, which grows with the complexity.
 Hence, always start with as little AI as possible, or with no AI at all.
-
-So, yes, we decided to implement a simple configurable scheduler. A bit anti-climactic, I know.
 
 The two main requirements for the scheduler are:
 1. you should be able to configure what the power plant does at any given time (prefer charging, prefer selling)
@@ -114,22 +118,29 @@ do not have to reset it manually every time the behavior needs to change.
 Point 2. should set behavior based on historical data so if you do not want to configure the power plant, it still
 does pretty well.
 
-This naive solution leaves out a lot of variables–it does not account for specific weather, it does not predict own consumption,
-it does not predict prices beyond the 24 hours fixed by the regulator, it does not care about battery level etc.
-Many things can be important, but having a simple default solution will allow us to better gauge the benefit of adding
-more intelligence.
+This naive solution leaves out a lot of variables. It does not account for specific weather. It does not predict own consumption.
+It does not predict prices beyond the 24 hours fixed by the regulator. It does not care about battery level etc.
+Later, we'll see which of these variables are important. Then, we'll add them to the solution.
 
-### Historical data - price trends and defaults
-Looking into the historical data reveals some patters that we would expect.
-Electricity prices are higher in the morning and in the evening, and lower during the day. This is most likely
-because in the morning waking up, making breakfast, commuting etc. In the evening, people come home, cook dinner,
+### Inferring default rules from historical data
+Historical data reveal some patters that we would expect.
+I think that they react mostly to changes in demand (consumption). Supply is not able to adjust quickly enough to
+accommodate different levels of demand during the day. I guess it would be both difficult and expensive to have a power plant run
+from 6 AM to 9 AM, and then shut it down for the rest of the day. It is probably cheaper to have it run all day.
+
+Prices are higher in the morning and in the evening, and lower during the day. This is most likely
+because in the morning, people are waking up, making breakfast, commuting etc. In the evening, people come home, cook dinner,
 watch TV, and so on. During the day, people are at work, so they consume less electricity.
-This pattern does not hold on weekends, when people many people are sleeping in, and / or not commuting.
+This pattern does not hold on weekends, when people many people are sleeping in, and / or not commuting as much.
 The morning peak is significantly smaller on weekends, and the price is generally lower throughout the day.
-[picture 1]
 
-The peaks are not so prominent in winter, probably because of heating during the day.
-[picture 2, january vs. july]
+![]({{ site.baseurl }}/assets/images/electricity_price_by_hour_weekday.png)
+
+*The prices in the images are standardized for year-month combinations.*
+The peaks are not so prominent in winter, probably because of heating during the day. They are also shifted more towards
+noon.
+
+![]({{ site.baseurl }}/assets/images/electricity_price_by_hour_season.png)
 
 This shows us that we should expect high prices from 6 AM to 9 AM, and from 5 PM to 9 PM on weekdays, except
 for weekend mornings, and that we should calibrate our assumptions for winter and summer.
@@ -155,6 +166,7 @@ We'll use a cron job for this and run it on a cheap VPS.
 Setting the power plant mode is a bit tricky, because the manufacturer does not provide any public API for that.
 Hence, we need to figure out what endpoints are called from the manufacturer's UI and replicate that.
 This is also a potential point of failure, because the manufacturer might change the UI and break our script.
+On the positive side, we do not have to interact with the power plant directly.
 
 Forcing the user to upload configuration to the server might be too much of a stretch, so we'll use
 a rudimentary Telegram-based API for this. 
@@ -165,9 +177,16 @@ If the user wants to deactivate the script, they can send a config message witho
 The script also logs the results of its run to the conversation. So, the user will see that the a power plant
 mode was either set, or the config was invalid.
 
-For additional monitoring, we use a free trial of Sentry.
-[diagram, telegram channel, server with script, power plant API]
-### Results
+```mermaid!
+flowchart TD
+    A[fa:fa-telegram Telegram chat] -->|downloads config| B[fa:fa-code Cronjob]
+    B -->|changes mode| C[fa:fa-solar-panel Power plant API]
+    D(fa:fa-user User) -->|uploads config|A
+    B --> |logs results|A
+```
+For additional monitoring, we use a free trial of [Sentry](https://sentry.io/welcome/).
+
+### Results & Lessons learned
 This initial solution should mainly save user's time. We did not expect that it would outperform
 user configuring the power plant manually, because it only carries out explicit user configuration.
 What we can do now and how well it serves us.
