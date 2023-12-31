@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Building AI-powered Power Plant - Part 1"
+title: "Building an AI-powered Power Plant - Part 1"
 date: 2023-10-17 10:00:00 +0000
 categories: [ programming, optimization, electricity, ml, ai ]
 ---
@@ -187,30 +187,46 @@ flowchart TD
 For additional monitoring, we use a free trial of [Sentry](https://sentry.io/welcome/).
 
 ### Results & Lessons learned
-This initial solution should mainly save user's time. We did not expect that it would outperform
-user configuring the power plant manually, because it only carries out explicit user configuration.
-What we can do now and how well it serves us.
-- how user is able to work with it
+It's been a while since I started writing this article. We had a chance to both implement the solution and watch it in action.
+I was a resounding failure.
 
-### Making it intelligent
-Our current solution is basically a scheduler.
-It requires manual input to function reasonably well.
-Someone should configure it every day, otherwise it will decide based on rough approximations.
-This is still better than having to switch the power plant manually every hour, but there is room for improvement.
+Technically, there was nothing wrong with it. It did exactly what we expected it to do.
+The scheduler worked. It used the config correctly to change the power plant mode. It logged the to the Telegram chat.
+So what was the problem?
 
-There are two main ways in which we can improve the solution–adding automation, and making it more user friendly.
+Well, there were several:
+1. In the initial solution, I failed to account for the fact that you can charge the battery 
+from the grid. I didn't know that it was possible and sometimes even necessary.
+When there is no energy from sun for too long, the battery can get discharged below the 10 % threshold. So you need to charge it to prevent degradation.
+This is easy to fix. Not a major issue.
 
-We will almost certainly go for the automation first. It should not only be more fun to implement,
-but it will also reduce the need for manual input, and thus should be more profitable.
-I have already sketched out a few variables that the optimization will account for in the previous sections.
-Keeping the spirit of our Pareto approach, we will start with a simple solution that uses a lot of heuristics,
-and we will start by replacing those that seem to bring the most improvement.
+2. I didn't double check that my father wants to use a scheduler and that it will be useful for him.
+When I presented the idea, he seemed enthusiastic. But I failed to notice that he enjoys fiddling with the
+power plant settings. So, the scheduler was not saving him from unpleasant work. This was a major issue.
 
-As for user-friendliness, the UI is quite terrible for a non-technical user. Producing valid JSON files can be a bit complicated
-if you have no experience with them. There is no validation, so you have to wait if the script will work or not.
-We will not focus on the UI in the next iteration too much, but we might do some small quality of life tweaks.
-If all goes well, we will create a proper UI in the next stage.
+3. Making non-programmers use JSON configuration non-programmers is a stupid idea. In the spirit of MVP, I wanted to use
+the simplest possible configuration format. But JSON seems easy for people who are used to work with
+mappings, arrays etc. A simple UI might have been a bit more work, but would probably make the scheduler way more usable.
+I am not saying that this was an absolute show stopper. It required a lot of explaining. And the user experience was terrible.
+Major issue.
 
-So, stay tuned for the next part! And look forward to some actual machine learning.
+   
+### Next steps
+Our current solution is a mere scheduler. It was supposed to be an MVP, but it is not really viable.
+In the next iteration, we have to pay more attention to user preferences.
+
+The solution can only be viable if it gives user something that they want. We have learned that saving labor
+won't be enough.
+Its decisions need to generate more profit than the user would be able to generate on their own.
+Saving labor might still be worth trying if there is a strong guarantee that the solution will work well without oversight.
+The scheduler just executes predefined rules, so it does not react to, e.g., current battery level.
+
+My original plan was to max out the benefits of automation first, and then start adding machine learning.
+Based on the learnings above, we'll have to introduce some optimization in the next iteration.
+
+We will, again, start with the simplest possible solution.
+Actually, we have already started and the second iteration is well under way.
+
+Stay tuned for the next article!
 
 
