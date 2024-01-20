@@ -5,27 +5,40 @@ date:   2024-01-07 15:00:00 +0000
 categories: [books]
 ---
 
-goal: one book per week (52 books in total)
-fell 3 books short
-- most books recommended by several sources => I already assumed they would be good, so, they had to be
-excellent to stand out
-- individual books in 2-3 sentences, possibly images of the covers
-- reaffirm the goal for 2024
+## Introduction
 
-## What I liked
+I love reading. But sometimes, there's just so many other things to do that I can't seem to make time for it.
+I'm not much into New Year's resolutions, but I thought setting a goal of reading a book per week would help me be more consistent.
+
+Even though I fell 3 books short, I'm still happy with the result. I read a lot, learned a lot and enjoyed it a lot.
+Some weeks, I read almost nothing, and periods when I read a couple books per week. Overall, my reading habits
+were more stable than before.
+
+In the following section, I'd like to highlight some of the books I enjoyed the most.
+
+## Books I enjoyed the most
+
 ### An Immense World: How Animal Senses Reveal the Hidden Realms Around Us
 - electric fish
 - echolocation even in humans
 - our perception of the world is so limited
-### On Writing Well
+
+### On Writing Well by William Zinsser
+The advice in this book is straightforward, yet powerful. I'm trying to keep it in mind when writing any non-fiction.
+Writing simply is hard. It is a craft tht needs to be practiced.
+TODO:
+
 ### The Long Haul: A Trucker's Tales of Life on the Road
 - immersing into a completely different world
 ### Ethics in the Real World: 90 Essays on Things That Matter
 - interesting discussion of Singer's philosophy
   - https://www.youtube.com/watch?v=KVl5kMXz1vA
-### Breath: The New Science of a Lost Art
-### Stolen Focus: Why You Can't Pay Attention
-- admits that he has no magic pill
-- some parts are not bringing too much new info
-- technofixes likely won't work
+
+## Conclusion
+I knew that I was leaning towards non-fiction, but I didn't realize how much. I read 7 fiction books, and 42 non-fiction books.
+I'll probably try to make this ratio more balanced in 2024. But it might be hard, because I've already stacked around 20 non-fiction books
+that I'm excited about and I'm constantly getting new recommendations.
+
+A book per week was a good goal. I'll try to hit it in 2024. Let's see how it goes this time.
+
 
