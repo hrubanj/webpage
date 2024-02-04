@@ -10,22 +10,19 @@ categories: [books]
 
 ## Introduction
 
-I love reading. Sometimes, ironically, I can't seem to make time for it.
+I've long felt that I should make more time for reading.
 
-Last year, I decided to try if setting a reading goal would help me be more consistent. I wanted to read a book per week on average.
+Sometimes you just don't feel like reading, but once you actually pick up a book, you realize how much you enjoy it.
+Last year, I decided to try if setting a reading goal would help me be more consistent.
 
-There are times when you don't feel like reading, but once you actually pick up a book, you realize how much you enjoy it.
-A reading goal can help you get over that initial hump.
-
-Even though I fell 3 books short, I'm still happy with the result. I read more than usual and I thoroughly enjoyed most of the books.
-Some weeks, I read almost nothing. Other weeks, I read a couple books.
+Even though I fell 3 books short (49 out of 52), I'm still happy with the result. I read more books than usual and I loved most of them.
 
 Here, I'd like to highlight the books I liked the most.
 
 ## My top books
 
 ### An Immense World: How Animal Senses Reveal the Hidden Realms Around Us by Ed Yong
-Our perception of the world is largely formed by what we see. But there are so many other ways to sense the world.
+Our perception of the world is largely formed by what we see. But there are plenty other ways to sense the world.
 There are fish that can detect object based on electric resistance, and birds that can, probably, sense magnetic fields.
 I used to think that echolocating animals can at best get a rough approximation of the obstacles they need to avoid.
 But it turns out that there are even blind people who can get such accurate information from echolocation that they can ride a bike in traffic. 
@@ -43,7 +40,7 @@ The essence of this books can be captured by a quote ascribed to Einstein: "Ever
 
 ### The Long Haul: A Trucker's Tales of Life on the Road by Finn Murphy
 I'd never thought that trucker's memoirs could be so interesting. I expected a couple of funny anecdotes, but this book is much more.
-Murphy spent decades moving mostly rich people's stuff across the US. He talks about the hierarchy of different trucker types,
+Murphy spent decades moving mostly rich people's stuff across US. He talks about the hierarchy of different trucker types,
 describes the struggles of hiring local helpers for loading and unloading cargo, the relationships of truckers with trucking companies,
 interaction with customers, etc. He learns more about the people whose stuff he moves in a few days than their friends might learn
 in years. On top of that, the book is just so damn readable.
@@ -56,15 +53,15 @@ Peter Singer is one of the most influential philosophers today.
 The book collects 90 essays that he wrote on various topics including religion, abortion, war, charity etc.
 He brilliantly shows that logical consistency can lead to very counter-intuitive moral conclusions.
 I enjoyed Singer's clear writing style and his ability to point out fascinating perspectives.
-On the other hand, I don't think he sufficiently justifies some of his premises. As a utilitarian, he believes that
+On the other hand, I don't think he justifies some of his premises sufficiently. As a utilitarian, he believes that
 minimizing suffering is the ultimate goal and bases all his arguments on that. That is problematic because it is not clear
-how to objectively measure suffering. I understand that in the short space of and essay, he can't go into all the details.
+how to objectively measure suffering. I understand that in the short space of an essay, he can't go into all the details.
 I might need to read a bit more of his work to understand his position better.
 
 <div style="text-align: center;"><img src="https://m.media-amazon.com/images/W/MEDIAX_849526-T3/images/I/71lKA0r+7tL._SL1500_.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ## Conclusion
-I enjoyed most books I read. As anyone who knows me can attest, I'm happy to recommend more books to anyone who shows even the slightest interest.
+As people who know me can attest, I'm happy to recommend more books to anyone who shows even the slightest interest.
 
 A book per week was a good goal. Let's see how it works for 2024.
