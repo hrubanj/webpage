@@ -4,7 +4,8 @@ title: "Building an AI-powered Power Plant - Part 1"
 date: 2023-10-17 10:00:00 +0000
 categories: [ programming, optimization, electricity, ml, ai ]
 ---
-
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
 
 ### Introduction
 My parents installed solar panels on their roof. Besides using generated electricity, they can sell the excess to the grid.
@@ -12,24 +13,24 @@ Choosing when to sell influences how much profit you make, because electricity p
 My brother and I thought it was a nice optimization problem. So, we decided to take a stab at it.
 
 This is a first post in a series. Here, we'll make an overview of the problem. We'll also sketch up the first iteration of the solution.
-In following posts, we'll learn from the its shortcomings, and improve upon it.
+In following posts, we'll learn from its shortcomings, and improve upon it.
 
 There is one caveat that I should mention. We are not experts on power plants, or electricity trading.
 We are learning a lot of the things as we are implementing them. So, it is quite likely
-that we'll make some incorrect assumptions and we'll have to go back and fix them. I'll try to be as transparent
+that we'll make some incorrect assumptions, and we'll have to go back and fix them. I'll try to be as transparent
 as possible about this, and I'll try to correct the mistakes as soon as we find them. If you find any, please let me know.
 
 
 ### What are we trying to solve?
-The solar panels generate electricity when sunlight hits them.
+The solar panels generate electricity when sun shines upon them.
 
 The following diagram shows how electricity can flow between the power plant, battery, grid, and consumption.
 
 ```mermaid!
 flowchart TD
-    A[fa:fa-solar-panel Power plant] -->|charges| B[fa:fa-battery Battery]
-    A -->|supplies energy for| C(fa:fa-house Consumption fa:fa-computer)
-    D[fa:fa-plug Electric grid] -->|charges| B
+    A[fab:fa-solar-panel Power plant] -->|charges| B[fab:fa-battery Battery]
+    A -->|supplies energy for| C(fab:fa-house Consumption fab:fa-computer)
+    D[fab:fa-plug Electric grid] -->|charges| B
     B --> |sells to|D
     A --> |sells to|D
     D --> |supplies energy for|C
@@ -57,9 +58,9 @@ Additionally, there won't by much AI in the first iteration. I'll explain why in
 
 ### Variables under control
 
-We can set the power plant to prefer charging the battery, or selling to the grid, or just throwing electricity away.
-We can also set charge the batter from the grid.
-Throwing electricity from the solar panels away makes sense if the battery is full and sell price is negative.
+We can set the power plant to prefer charging the battery, selling to the grid, or just dumping electricity.
+We can also set it to charge the battery from the grid.
+Dumping excess solar electricity makes sense if the battery is full and sell price is negative.
 
 The battery should not be discharged below 10 % of its capacity, and should not be charged above 90 % of its capacity, otherwise
 it will degrade faster. We'll take these thresholds as hard constraints.
@@ -75,7 +76,7 @@ The buy price will also usually be higher than the sell price.
 It is possible to both buy and sell electricity at spot prices. In this case, the sell price
 is still a bit lower because of a transmission fee subtracted from it.
 
-Even though, buy price is fixed under out current contract, we must be ready to work with both spot buy and spot sell prices.
+Even though, the buy price is fixed under out current contract, we must be ready to work with both spot buy and spot sell prices.
 
 Interestingly, the spot price can be negative. This means that we would have to pay for selling electricity.
 It should also mean that we could get paid for consuming electricity, but we need to verify if it actually works this way.
@@ -108,18 +109,33 @@ do not have to reset it manually every time the behavior needs to change.
 Point 2. should set behavior based on historical data so if you do not want to configure the power plant, it still
 does pretty well.
 
-This naive solution leaves out a lot of variables. It does not account for specific weather. It does not predict own consumption.
-It does not predict prices beyond the interval fixed by the regulator. Nor does it not care about battery level etc.
-Later, we'll see which of these variables are important. Then, we'll add them to the solution.
+The scheduler's decision-making can then look something like this:
+
+| Hour starting         	 | 7            	 | 8            	 | 9                 	 | 10           	 |
+|-------------------------|----------------|----------------|---------------------|----------------|
+| Global default        	 | CHARGING_SUN 	 | CHARGING_SUN 	 | CHARGING_SUN      	 | CHARGING_SUN 	 |
+| Weekday settings      	 | SELLING_SUN  	 | -     	        | SELLING_SUN       	 | -    	         |
+| Day-specific settings 	 | -     	        | -     	        | CHARGING_SUN_GRID 	 | -     	        |
+| <b>Resulting mode</b> 	 | SELLING_SUN  	 | CHARGING_SUN 	 | CHARGING_SUN_GRID 	 | CHARGING_SUN 	 |
+
+<span style="font-size:0.5em;">CHARGING_SUN sets the system to prefer charging over supplying, SELLING_SUN sets it to prefer supplying, CHARGING_SUN_GRID sets it to charge from both sun and grid. These are just example modes. You can come up with more possibilities.</span>
+
+The scheduler always uses the most time-specific settings that it can find.
+You set global default and weekday-specific settings based on patterns in historical data. You can then override these settings for specific days, e.g.
+when the day is unusually sunny, or when electricity prices are unusually high.
+
+We need to combine these modes with reasonable settings in the manufacturer's UI that will, for example, ensure that the
+battery is not discharged below 10 % not matter what mode the scheduler sets.
+
 
 ### Inferring default rules from historical data
-Historical data exhibit some patters that we would expect.
+Most patterns we see in historical data should not surprise us.
 I think that electricity prices react mostly to changes in demand (consumption). Supply is not able to adjust quickly enough to
 accommodate different levels of demand during the day. I guess it would be both difficult and expensive to have a power plant run
 from 6 AM to 9 AM, and then shut it down for the rest of the day. It is probably cheaper to have it run all day.
 
 Prices are higher in the morning and in the evening, and lower during the day. This is probably
-because in the morning, people are waking up, making breakfast, commuting etc. In the evening, people come home, cook dinner,
+because, in the morning, people are waking up, making breakfast, commuting etc. In the evening, people come home, cook dinner,
 watch TV, and so on. During the day, people are at work, so they consume less electricity.
 This pattern does not hold on weekends, when people many people are sleeping in, and / or not commuting as much.
 The morning peak is significantly smaller on weekends, and the price is generally lower throughout the day.
@@ -140,8 +156,7 @@ for weekend mornings, and that we should calibrate our assumptions for winter an
 We keep the spirit of simplicity also for the actual implementation.
 
 The solution only needs to be able to read a configuration file and set the power plant mode.
-
-We'll use a hierarchical configuration. Each entry has a start time, end time, and a mode. Entries
+We use a hierarchical configuration outlined above. Each entry has a start time, end time, and a mode. Entries
 can also have specific date, weekdays, or none of this. Date-specific entries take precedence over
 weekday-specific entries, which take precedence over entries without any of these. If no entry is
 found for given time, the default mode is used.
@@ -149,13 +164,29 @@ This lets users define exact mode based on assumed price and consumption, but le
 defaults that should function reasonably well if the user does not want to configure the power plant too often.
 
 This means that we need a script that regularly checks the configuration file and sets the mode.
-We'll use a cron job for this, and run it on a cheap VPS.
+We use a cron job for this, and run it on a cheap VPS.
 
-Setting the power plant mode is a bit tricky, because the manufacturer does not provide any public API for that.
-Hence, we needed to figure out what endpoints are called from the manufacturer's UI.
-This is also a potential point of failure, because the API might change and break our script.
-On the positive side, we do not have to interact with the power plant directly via some exotic protocol.
-I.e. we can just use HTTP requests.
+#### Communication protocol
+
+The power plant manufacturer does not provide any public API for setting the power plant mode.
+Hence, we had to reverse-engineer it from their UI.
+
+On the positive side, we can use HTTP requests to call the manufacturer's server, and
+we do not have to interact with the power plant directly via some exotic protocol. But that is probably
+the only convenient part about it.
+
+My brother had to become a bit of a cryptographer to figure out what the UI does. Just to give you an idea:
+ - The API is not documented.
+ - You can't rely on the status code to tell you if the request was successful. It always returns 200 (success) status code. 
+ - The response body is a list of numbers. Each number corresponds to a setting. You have to figure out which number is which setting based on their order.
+ - The response body contains some Chinese characters. Translating them can give you a hint about what the response means.
+
+And obviously, since the API is non-public, it can change any time. Before we managed to finish the implementation, there was at least
+one braking change.
+
+The reverse-engineering process is fascinating and it would probably deserve its own article. I'll try to convince my brother to write it.
+
+#### UI
 
 Forcing the user to upload configuration to the server might be too much of a stretch, so we use
 a rudimentary Telegram-based API for this. 
@@ -163,17 +194,18 @@ We create a dedicated conversation for controlling the power plant. The user can
 to the conversation and tag the telegram bot. The bot always reads the latest configuration and sets the mode.
 If the user wants to deactivate the script, they can send a config message without any config file.
 
-The script also logs the results of its run to the conversation. So, the user will see that the a power plant
+#### Observability
+
+The script also logs the results of its run to the conversation. So, the user will, for example, see that the power plant
 mode was either set, or the config was invalid.
 
 ```mermaid!
 flowchart TD
-    A[fa:fa-telegram Telegram chat] -->|downloads config| B[fa:fa-code Cronjob]
-    B -->|changes mode| C[fa:fa-solar-panel Power plant API]
-    D(fa:fa-user User) -->|uploads config|A
+    A[fab:fa-telegram Telegram chat] -->|downloads config| B[fab:fa-code Cronjob]
+    B -->|changes mode| C[fab:fa-solar-panel Power plant API]
+    D(fab:fa-user User) -->|uploads config|A
     B --> |logs results|A
 ```
-We use [Sentry](https://sentry.io/welcome/) that has a free trial that suits out use-case.
 
 ### Results & lessons learned
 It's been a while since I started writing this article. We had a chance to both implement the solution and watch it in action.
@@ -189,7 +221,7 @@ from the grid. I didn't know that it was possible and sometimes even necessary.
 When there is no energy from sun for too long, the battery can get discharged below the 10 % threshold. So you need to charge it to prevent degradation.
 This is easy to fix. Not a major issue. (I've already fixed this in the above text to avoid confusion.)
 
-2. I didn't double check that the intended user, i.e. my father, wants to use a scheduler and that it will be useful for him.
+2. I didn't double-check that the intended user, i.e. my father, wants to use a scheduler and that it will be useful for him.
 When I presented the idea, he seemed enthusiastic. But I failed to notice that he enjoyed fiddling with the
 power plant settings. So, the scheduler was not saving him unpleasant work. It was rather robbing him of this hands-on experience.
 This was a major issue.
@@ -202,7 +234,7 @@ Major issue.
 
    
 ### Next steps
-The scheduler was not as successful as I hoped. Instead of MVP, it is just an MP. It is not really viable.
+The scheduler was not as successful as I hoped. It isn't even and MVP. It is not viable.
 But it did give us some valuable insights. In the next iteration, we have to pay more attention to user preferences.
 
 The solution can only be viable if it gives user something that they want. We have learned that saving labor
@@ -214,4 +246,4 @@ The scheduler just executes predefined rules, so, it does not react to, e.g., cu
 My original plan was to max out the benefits of automation first, and then start adding machine learning.
 Based on the learnings above, we'll have to invert this order.
 
-We have already started working on the second iteration. Stay tuned for the next article!
+We are already working on the second iteration. Stay tuned for the next article!
