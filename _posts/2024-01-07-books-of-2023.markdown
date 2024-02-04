@@ -5,6 +5,9 @@ date:   2024-01-07 15:00:00 +0000
 categories: [books]
 ---
 
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
+
 ## Introduction
 
 I love reading. Sometimes, ironically, I can't seem to make time for it.
