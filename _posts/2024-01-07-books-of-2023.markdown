@@ -12,10 +12,10 @@ categories: [books]
 
 I've long felt that I should make more time for reading.
 
-Sometimes, you don't feel like picking up a book. Only once you immerse yourself into it, you realize how much you enjoy it.
+Sometimes, you don't feel reaching for a book. But once you immerse yourself into it, you often realize how much you enjoy it.
 
 Last year, I decided to set a reading goal that would help me be more consistent.
-Even though I fell 3 books short (49 out of 52), I'm still happy with the result.
+Even though I fell three books short (49 out of 52), I'm still happy with the result.
 I read more than usual, and it was worth it.
 
 Here, I'd like to highlight the books that impressed me the most.
@@ -23,11 +23,11 @@ Here, I'd like to highlight the books that impressed me the most.
 ## My top books
 
 ### An Immense World: How Animal Senses Reveal the Hidden Realms Around Us by Ed Yong
-Our perception is primarily visual. But there are plenty other ways to sense our environment.
+Our perception is mostly visual. But there are plenty of other ways to sense our environment.
 
-There are fish that can detect object based on electric resistance. Some birds can sense magnetic fields.
+There are fish that can detect objects by their electric resistance. Some birds can sense magnetic fields.
 I used to think that echolocating animals can, at best, get a rough idea of the obstacles they need to avoid. And I was wrong. 
-Even some blind people echolocate so well that they can ride a bike in traffic.
+Even some blind people echolocate so precisely that they can ride a bike in traffic.
 
 Yong's book delivers on the promise of its title. It does introduce you to a whole new world.
 
@@ -38,9 +38,9 @@ Yong's book delivers on the promise of its title. It does introduce you to a who
 If you wanted a more spicy title, you could call this book "A guide to no-bullshit writing".
 Many non-fiction writers hold it in a Bible-like awe.
 
-Simple writing is hard. Rather than innate gift, it is a craft that you need to practice.
-Writer should do the work of conveying the message, so, reader can understand it easily.
-Writing that looks effortless often takes a ton of effort. You should never be satisfied with your first draft.
+Simple writing is hard. Rather than an innate gift, it is a craft that you need to practice.
+Writers should do the work of conveying the message so readers can understand it easily.
+Writing that looks effortless often takes a ton of effort. You should never settle for your first draft.
 
 As Einstein has (allegedly) said: "Everything should be made as simple as possible, but not simpler."
 I love Zinsser's advice, and I'm trying to follow it.
@@ -52,11 +52,11 @@ I love Zinsser's advice, and I'm trying to follow it.
 You'd hardly think that trucker's memoirs could be so interesting. 
 You might expect a couple of funny anecdotes, but this book is much more.
 
-Murphy spent decades moving  rich people's stuff across US. 
-He talks about the hierarchy of different trucker professions. 
-He describes the relationships of truckers with trucking companies. 
-And he also delves into the interaction with customers.
-A bedbugger–a trucker who moves people's stuff–learns more about his clients in a few days than even their lifelong friends might know. 
+Murphy spent decades moving  rich people's stuff across the US. 
+He talks about hierarchy of different trucker professions. 
+He describes relationships of truckers with trucking companies. 
+And he also delves into how they interact with customers.
+A bedbugger, a trucker who moves people's stuff, learns more about his clients in a few days than even their lifelong friends might know.
 
 On top of that, the book is so damn readable.
 
@@ -64,16 +64,17 @@ On top of that, the book is so damn readable.
 <br/><br/>
 
 ### Ethics in the Real World: 90 Essays on Things That Matter by Peter Singer
+Logical consistency can lead to counter-intuitive moral conclusions. For example, if you accept a few simple assumptions,
+you should give almost all your money to charity. It is immoral not to do so.
+
 Peter Singer is one of the most influential philosophers today. 
 In this collection of essays, he writes about religion, abortion, war, charity, and several other topics. 
-He demonstrates that logical consistency can lead to counter-intuitive moral conclusions. For example, that, if you accept a few simple assumptions,
-you should give almost all your money to charity.
 
 I enjoyed Singer's clear writing style and his intellectual honesty. 
-But, I believe he doesn't justify some of his premises well enough. 
+Yet, I believe he doesn't justify some of his premises well enough. 
 As a utilitarian, he thinks that minimizing suffering is the ultimate goal. 
-That is problematic because it is unclear how to measure suffering. 
-In his defense, I realize that in the short space of an essay, he can't go into all the details. 
+That is problematic because you can't objectively measure suffering. 
+In his defense, I realize that, in the short space of an essay, he can't go into all the details. 
 
 I'll need to read a bit more of his work to understand his position better.
 
