@@ -12,40 +12,51 @@ categories: [books]
 
 I've long felt that I should make more time for reading.
 
-Sometimes you don't feel like reading, but once you actually pick up a book, you realize how much you enjoy it.
-Last year, I decided to try if setting a reading goal would help me be more consistent.
+Sometimes, you don't feel like picking up a book. But once you immerse yourself into it, you realize how much you enjoy it.
 
-Even though I fell 3 books short (49 out of 52), I'm still happy with the result. I read more books than usual and I loved most of them.
+Last year, I decided to set a reading goal that would help me be more consistent.
+Even though I fell 3 books short (49 out of 52), I'm still happy with the result.
+I read more than usual and it was worth it.
 
-Here, I'd like to highlight the ones I liked the most.
+Here, I'd like to highlight the books that impressed me the most.
 
 ## My top books
 
 ### An Immense World: How Animal Senses Reveal the Hidden Realms Around Us by Ed Yong
-Our perception of the world is primarily visual. But there are plenty other ways to sense our environment.
+Our perception is primarily visual. But there are plenty other ways to sense our environment.
+
 There are fish that can detect object based on electric resistance. Some birds can sense magnetic fields.
-I used to think that echolocating animals can at best get a rough idea of the obstacles they need to avoid. And I was wrong. 
-Some blind people echolocate so well that they can even ride a bike in traffic.
+I used to think that echolocating animals can, at best, get a rough idea of the obstacles they need to avoid. And I was wrong. 
+Even some blind people echolocate so well that they can ride a bike in traffic.
+
+Yong's book delivers on the promise of its title. It does introduce you to a whole new world.
 
 <div style="text-align: center;"><img src="https://m.media-amazon.com/images/I/81rOrYhlMCL._SL1500_.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### On Writing Well by William Zinsser
+If you wanted a more spicy title, you could call this book "A guide to no-bullshit writing".
+Many non-fiction writers hold it in a Bible-like awe.
+
 Simple writing is hard. Rather than innate gift, it is a craft that you need to practice.
 Writer should do the work of conveying the message, so, reader can understand it easily.
-Writing that looks effortless often takes a lot of effort to produce. It takes a lot of rewriting.
-As Einstein has said: "Everything should be made as simple as possible, but not simpler."
-The book provides a ton of examples and practical advice.
+Writing that looks effortless often takes a ton of effort. You should never be satisfied with your first draft.
+
+As Einstein has (allegedly) said: "Everything should be made as simple as possible, but not simpler."
+I love Zinsser's advice and I'm trying to follow it.
 
 <div style="text-align: center;"><img src="https://m.media-amazon.com/images/W/MEDIAX_849526-T3/images/I/71bIiz4wX0L._SL1500_.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### The Long Haul: A Trucker's Tales of Life on the Road by Finn Murphy
-I'd never thought that trucker's memoirs could be so interesting. 
-I expected a couple of funny anecdotes, but this book is much more. Murphy spent decades moving  rich people's stuff across US. 
+You'd hardly think that trucker's memoirs could be so interesting. 
+You might expect a couple of funny anecdotes, but this book is much more.
+
+Murphy spent decades moving  rich people's stuff across US. 
 He talks about the hierarchy of different trucker professions. 
 He describes the relationships of truckers with trucking companies. 
-And he also delves into the interaction with customers. He learns more about the people whose stuff he moves in a few days than their friends might learn in years. 
+And he also delves into the interaction with customers. He learns more about the people whose stuff he moves in a few days than even their lifelong friends might know. 
+
 On top of that, the book is so damn readable.
 
 <div style="text-align: center;"><img src="https://m.media-amazon.com/images/W/MEDIAX_849526-T3/images/I/91NUY0sTJPL._SL1500_.jpg" width="200" height="auto" /></div>
@@ -53,13 +64,16 @@ On top of that, the book is so damn readable.
 
 ### Ethics in the Real World: 90 Essays on Things That Matter by Peter Singer
 Peter Singer is one of the most influential philosophers today. 
-In the book, he writes about religion, abortion, war, charity and several other topics. 
-He demonstrates that logical consistency can lead to very counter-intuitive moral conclusions. 
+In this collection of essays, he writes about religion, abortion, war, charity and several other topics. 
+He demonstrates that logical consistency can lead to counter-intuitive moral conclusions. For example, that, if you accept a few simple assumptions,
+you should give almost all your money to charity.
+
 I enjoyed Singer's clear writing style and his intellectual honesty. 
 But, I believe he doesn't justify some of his premises well enough. 
 As a utilitarian, he thinks that minimizing suffering is the ultimate goal. 
 That is problematic because it is unclear how to measure suffering. 
-I realize that in the short space of an essay, he can't go into all the details. 
+In his defense, I realize that in the short space of an essay, he can't go into all the details. 
+
 I'll need to read a bit more of his work to understand his position better.
 
 <div style="text-align: center;"><img src="https://m.media-amazon.com/images/W/MEDIAX_849526-T3/images/I/71lKA0r+7tL._SL1500_.jpg" width="200" height="auto" /></div>
