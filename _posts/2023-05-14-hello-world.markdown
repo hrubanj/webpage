@@ -2,7 +2,7 @@
 layout: post
 title:  "Hello, world!"
 date:   2023-05-14 15:00:00 +0000
-categories: general
+categories: [general]
 ---
 
 Hello there! My name is Jiri, and I'm passionate about exploring the world of data and machine learning, traveling to new places, staying fit, immersing myself in nature, and reading about anything and everything.
