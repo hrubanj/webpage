@@ -10,11 +10,11 @@ categories: [ programming, optimization, electricity, ml, ai ]
 ### Introduction
 My parents installed solar panels on their house's roof. Besides consuming generated electricity, they can sell the excess to the grid.
 
-Electricity prices fluctuate. You can save a lot of money if you optimize when to sell it and when to store it.
+Electricity prices fluctuate. You can save a lot of money if you optimize when to sell and when to store energy in a battery.
 
 My brother and I thought it was a fun problem to solve. So, we decided to take a stab at it.
 
-This is a first post in a series. Here, we'll make an overview of the problem. We'll also sketch the first iteration of the solution.
+This is the first post in a series. Here, we'll make an overview of the problem. We'll also sketch the first iteration of the solution.
 In following posts, we'll learn from its shortcomings, and improve upon it.
 
 There is one caveat: We are not experts on power plants, or electricity trading.
@@ -34,29 +34,28 @@ The following diagram shows how electricity can flow in the system.
 
 When the sun is shining, you can sell electricity to the grid, consume it, or charge the battery.
 You can also charge the battery from the grid and consume either from the grid, or from the battery.
-You can combine some of these settings. For example, you can charge your battery and consume from the grid at the same time.
+You can combine some of these settings. For example, you can charge the battery and consume from the grid at the same time.
 
 ### The big picture
 The problem seems simple. Mostly, you are just deciding whether to sell or store electricity.
 But it may grow almost arbitrarily complex. You can keep refining weather predictions and their impact on solar panel output.
 And you might also optimize when you consume electricity.
-For example, by running a dishwasher when the sun is shining.
+For example, you could start your washing machine only when electricity is cheap.
 
-We want to build a functional solution fast.
-We must not get bogged down in fancy micro-optimizations.
+We want to build a testable solution fast.
+So, we must not get bogged down in fancy micro-optimizations.
 
 We'll create a working prototype, and we'll improve it in steps.
 There's going to be lots of simplified assumptions, and some bold implementation shortcuts.
 
 With the prototype in hand, we'll be able to verify our assumptions, and we'll know where to focus our efforts.
-Even the final solution might use a lot of simplifications.
+Even the final version might use a lot of simplifications.
 After all, Newtonian physics is a simplification, and it works well most of the time.
 
 Additionally, there won't be any AI in the first iteration.
 If you introduce AI too early, you often end up with something that is too hard to build and test.
 
 ### Variables under control
-
 We can set the power plant to prefer charging the battery, selling to the grid, or  dumping electricity.
 We can also charge the battery from the grid.
 Dumping electricity makes sense if the battery is full and selling price is negative.
@@ -72,7 +71,7 @@ OTE publishes prices for the following day at 2 PM. This simplifies our problem,
 
 ### Purchasing vs. selling prices
 The buying price will usually be higher than the selling price.
-It is possible to both buying and selling electricity at spot prices.
+It is possible to both buy and sell electricity at spot prices.
 The grid operator charges a transmission fee for sold electricity.
 
 Interestingly, spot prices can be negative. This means that you would have to pay for selling electricity.
@@ -81,16 +80,16 @@ It should also mean that we could get paid for consuming electricity.
 ### Default solution
 The power plant manufacturer provides an application for controlling the system. 
 You can, for example, set the maximum battery charge level. 
-When the battery reaches it the power plant starts selling electricity to the grid. 
+When the battery reaches it, the power plant starts selling electricity to the grid. 
 When the battery level is below a set threshold, the power plant starts charging the battery. 
 The system always prefers own consumption over both charging and selling. 
-This usually makes sense. If you sell the electricity, you lose some of it, because transmission is not lossless. 
+This usually makes sense. If you sell the electricity, you lose some of it in transmission. 
 And, as mentioned before, the buying price is usually higher than the selling price.
 
 The default allows for some tuning, but it does not address one important issue: 
 It does not think ahead. It does not try to optimize when the selling should happen. 
 And you might want to sell the electricity at a price peak time even if the battery is not full. 
-If you want to maximize profit, you have to change the settings several times per day.
+If you want to maximize profit, you might have to change the settings several times per day.
 
 ### Naive heuristic - start without AI
 What is the simplest possible tool that can make this better?
@@ -133,14 +132,14 @@ I reckon it would be expensive to have a power plant run from 6 AM to 9 AM, and 
 It is probably cheaper to have it run all day.
 
 Prices are higher in the morning and in the evening, and lower during the day. 
-In the morning, people are waking up, cooking, commuting etc. 
+In the morning, people are waking up, commuting etc. 
 In the evening, they come home, cook dinner, watch TV, and so on. 
 This pattern does not hold on weekends, when many people are sleeping in, and / or not commuting as much. 
 The morning price does not peak so much on weekends, and it is generally lower throughout the day.
 
 ![]({{ site.baseurl }}/assets/images/electricity_price_by_hour_weekday.png)
 
-*The prices in the images are standardized for year-month combinations (I subtract mean price for year-month for each value and divide by the standard deviation for that year-month).*
+*The prices in the images are standardized for year-month combinations (We subtract mean price for year-month for each value and divide by the standard deviation for that year-month).*
 The peaks are not so prominent in winter, probably because of heating during the day. They are also shifted more towards
 noon.
 
@@ -151,25 +150,21 @@ We should also calibrate our assumptions for winter and summer.
 
 
 ### Implementation
-The scheduler must only read a configuration file and set the power plant mode.
-
-
 We use a hierarchical configuration outlined above.
 Each entry in it has a start time, an end time, and a mode.
 Entries can also have specific date, weekdays, or none of this.
 Date-specific entries override weekday-specific entries.
 Weekday-specific entries take precedence over entries without date and weekday.
 
-We wrote a script that checks the configuration file and sets the mode.
+We wrote a script that parses the configuration file and sets the mode.
 
 A cronjob launches the script every hour. 
 
 It runs on a cheap virtual server.
 
-That is literally it. It is so simple that there is no point in showing the code here.
+That is literally it.
 
 #### Communication with the power plant
-
 The power plant manufacturer does not provide a public API for setting the power plant mode.
 Hence, we had to reverse-engineer it from their UI.
 
@@ -184,8 +179,8 @@ My brother had to become a bit of a cryptographer to figure out what the UI does
    - You have to figure out which number is which setting based on their order.
    - Translating the Chinese characters can give you a hint about what the response means.
 
-And obviously, since the API is non-public, it can change anytime. Since I started writing this article, they made
-a change that broke our script.
+And obviously, since the API is non-public, it can change anytime. In fact, before we finished the prototype, the API maintainers made
+a change that broke our script, and we had to fix it.
 
 The reverse-engineering process is fascinating, and it would deserve its own article. I'll try to convince my brother to write one.
 
@@ -247,6 +242,6 @@ The solution can only be viable if it gives users something that they want. We k
 won't be enough. It has to make more profit than its users could generate on their own.
 
 My original plan was to reap the benefits of automation first, and then start adding machine learning.
-I've learned that we'll have to do it the other way round.
+I've learned that we might have to do it the other way round.
 
 We've already started working on another iteration. Stay tuned for the next article!
