@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Building an AI-powered Power Plant - Part 1"
-date: 2023-10-17 10:00:00 +0000
+date: 2024-02-24 00:00:00 +0000
 categories: [ programming, optimization, electricity, ml, ai ]
 ---
 <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
@@ -39,11 +39,11 @@ You can combine some of these settings. For example, you can charge the battery 
 ### The big picture
 The problem seems simple. Mostly, you are just deciding whether to sell or store electricity.
 But it may grow almost arbitrarily complex. You can keep refining weather predictions and their impact on solar panel output.
-And you might also optimize when you consume electricity.
+You might also optimize when you consume electricity.
 For example, you could start your washing machine only when electricity is cheap.
 
 We want to build a testable solution fast.
-So, we must not get bogged down in fancy micro-optimizations.
+So, we don't want to get bogged down in fancy micro-optimizations.
 
 We'll create a working prototype, and we'll improve it in steps.
 There's going to be lots of simplified assumptions, and some bold implementation shortcuts.
@@ -56,8 +56,8 @@ Additionally, there won't be any AI in the first iteration.
 If you introduce AI too early, you often end up with something that is too hard to build and test.
 
 ### Variables under control
-We can set the power plant to prefer charging the battery, selling to the grid, or  dumping electricity.
-We can also charge the battery from the grid.
+You can set the power plant to prefer charging the battery, selling to the grid, or  dumping electricity.
+You can also charge the battery from the grid.
 Dumping electricity makes sense if the battery is full and selling price is negative.
 
 The battery should be charged to between 10 % and 90 % of its capacity, otherwise
@@ -72,7 +72,6 @@ OTE publishes prices for the following day at 2 PM. This simplifies our problem,
 ### Purchasing vs. selling prices
 The buying price will usually be higher than the selling price.
 It is possible to both buy and sell electricity at spot prices.
-The grid operator charges a transmission fee for sold electricity.
 
 Interestingly, spot prices can be negative. This means that you would have to pay for selling electricity.
 It should also mean that we could get paid for consuming electricity.
@@ -87,8 +86,8 @@ This usually makes sense. If you sell the electricity, you lose some of it in tr
 And, as mentioned before, the buying price is usually higher than the selling price.
 
 The default allows for some tuning, but it does not address one important issue: 
-It does not think ahead. It does not try to optimize when the selling should happen. 
-And you might want to sell the electricity at a price peak time even if the battery is not full. 
+It does not think ahead. It won't try to optimize when the selling should happen. 
+Yet, you might want to sell the electricity at a price peak time even if the battery is not full. 
 If you want to maximize profit, you might have to change the settings several times per day.
 
 ### Naive heuristic - start without AI
@@ -103,7 +102,7 @@ The two main requirements are that:
 This ensures that you can set power plant behaviour for the 24 hours for which you know the spot prices.
 You don't have to reset it manually every time the behavior needs to change.
 
-If you don't configure it, it uses heuristics from historical data.
+If you don't configure it, it uses heuristics based on historical data.
 
 The scheduler's decision-making can then look something like this:
 
@@ -150,7 +149,7 @@ We should also calibrate our assumptions for winter and summer.
 
 
 ### Implementation
-We use a hierarchical configuration outlined above.
+We use a hierarchical configuration outlined in previous sections.
 Each entry in it has a start time, an end time, and a mode.
 Entries can also have specific date, weekdays, or none of this.
 Date-specific entries override weekday-specific entries.
@@ -177,10 +176,10 @@ My brother had to become a bit of a cryptographer to figure out what the UI does
  - You can't rely on status codes to tell you if a request was successful. It always returns 200 (success) status code. 
  - The response body is a list of numbers and a bunch of Chinese characters. Each number corresponds to a setting.
    - You have to figure out which number is which setting based on their order.
-   - Translating the Chinese characters can give you a hint about what the response means.
+   - The only hint you can get are the Chinese characters. By no means an exhaustive documentation.
 
 And obviously, since the API is non-public, it can change anytime. In fact, before we finished the prototype, the API maintainers made
-a change that broke our script, and we had to fix it.
+a change that broke our script, and we had to reverse-engineer again.
 
 The reverse-engineering process is fascinating, and it would deserve its own article. I'll try to convince my brother to write one.
 
@@ -215,7 +214,7 @@ The scheduler worked. It was switching power plant mode based on configuration. 
 So what was the problem?
 
 Well, there were several:
-1. In the initial solution, I failed to account for the fact that you can charge the battery from the grid. 
+1. In the initial solution, I didn't realize that you can charge the battery from the grid. 
 I didn't know that it was possible, and sometimes even necessary.
 When no solar energy is arrives for too long, the battery can get discharged below the 10 % threshold.
 So you need to charge it to prevent degradation. This was easy to fix.
