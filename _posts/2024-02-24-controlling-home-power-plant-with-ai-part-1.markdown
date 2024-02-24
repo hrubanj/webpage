@@ -195,14 +195,7 @@ If you want to deactivate the script, you can send a configuration message witho
 The script logs the results of its run to the conversation. You can, for example, see that the power plant
 mode was either set, or the configuration was invalid.
 
-```mermaid!
-flowchart TD
-    A[fa:fa-telegram Telegram chat] -->|downloads config| B[fa:fa-code Cronjob]
-    B -->|changes mode| C[fa:fa-solar-panel Power plant API]
-    D(fa:fa-user User) -->|uploads config|A
-    B --> |logs results|A
-```
-
+<div style="text-align: center;"><img src="https://mermaid.ink/img/pako:eNpVj01qw0AMha8itGohvoAXBSfedBdosupkoXpkx-3MyMwPpmRy945jF1othJC-9x66YSeascbeyNxdyUc4tcpBqea9p7qnKrLhwZOF0-9QuHiBqnrJWmZnhHSATlw_Dhn2m2qxhYMX9ykfl9Vw_5AUsRs4gC1AhsOGBzHkq4kcGzjKzB4mQy5Cc3zd1O3TSqZQjufSnh92afqX3_yJgmxkCOA5JBNDbnCHlr2lUZd_bwuoMF7ZssK6jJr8l0Ll7oWjFOXt23VYR594h2nSFLkdafl_Xd5_AHjUah8?type=png" width="1000" height="auto" /></div>
 <br/><br/>
 
 ### Results & lessons learned
