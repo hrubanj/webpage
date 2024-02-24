@@ -5,6 +5,9 @@ date: 2023-08-20 10:00:00 +0000
 categories: [ programming, sql ]
 ---
 
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
+
 ### Introduction
 
 How you query your database matters. Sloppy queries can bring your website to a halt. Effective queries can make your

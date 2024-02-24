@@ -5,6 +5,9 @@ date:   2023-05-14 15:00:00 +0000
 categories: [general]
 ---
 
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
+
 Hello there! My name is Jiri, and I'm passionate about exploring the world of data and machine learning, traveling to new places, staying fit, immersing myself in nature, and reading about anything and everything.
 
 I'll be sharing my thoughts and insights on these topics regularly in this blog.
