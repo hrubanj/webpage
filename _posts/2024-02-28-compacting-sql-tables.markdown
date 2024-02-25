@@ -10,11 +10,11 @@ categories: [programming, sql]
 
 ### Introduction
 
-Back in the days when I was writing a lot of ETL scripts, I learned a nice trick for compacting SQL tables.
-As I am not writing that much SQL anymore, the muscle memory is fading away. So, I decided to write it down.
-Hopefully, it will be useful for someone besides future me.
+Back when I was writing a lot of ETL scripts, I learned a nice trick for compacting SQL tables. 
+As I am not writing that much SQL anymore, the muscle memory is fading away. 
+So, I decided to write it down. I hope that someone besides myself will find it useful.
 
-Imagine you have a table of items in stock that looks like this:
+Suppose you have a table of items in stock that looks like this:
 
 | date       | item\_name | count |
 |:-----------|:-----------|:------|
@@ -30,9 +30,10 @@ Imagine you have a table of items in stock that looks like this:
 
 There is `date`, `item_name`, and a value that changes over time (`count` in this case).
 
-In a lot of rows, the count remains the same, and only the date changes.
-The example table has only a few rows, but imagine that a larger table that has millions of products and thousands of
-dates. If you can compact it and record only changes, you can save a ton of rows.
+In many rows, the count remains the same, and only the date changes. 
+This example has only a few rows. 
+Imagine a more realistic use-case–table with millions or billions of rows. 
+If you compact it and record only changes, you'll save a ton of space.
 
 The compacted version can look something like this:
 
@@ -50,7 +51,7 @@ Apart from being smaller, it is also easier to navigate. At least for me.
 
 ### The trick
 Let's actually create the table, so you can follow along.
-All code below is for SQLite, but it should work in most other SQL databases as well.
+All code below is for SQLite, but most of it should work in any SQL database.
 There are some online SQLite editors (e.g. [here](https://sqliteonline.com/), 
 so you can try it out without installing anything.
 
@@ -116,16 +117,18 @@ from temp_change_capture
 group by item_name, count, change_indicator
 ;
 ```
-We partition the table by `item_name` and assign row numbers ordered by date.
-We also partition by `item_name` and `count` and assign row numbers ordered by date.
-The difference between these two row numbers changes when the `count` changes while the `item_name` does not change.
-So, if we group by the difference and `item_name` and `count`, we get time periods when the `count` remains the same.
+You partition the table by `item_name` and assign row numbers ordered by date. 
+You also partition it by `item_name` and `count` and assign row numbers ordered by date. 
+Then, you compute the difference between these row numbers (`change_indicator`). 
+The `change_indicator` changes when the `count` changes and the `item_name` remains unchanged.
+You can use it to find time periods when `count` did not change.
 
 ### How to get the original table back?
-To get from the compacted table back to the original, you can just join the compacted table with a series of dates.
-Generating the date series is probably the only database-specific part of this trick.
+If you join the compacted table with a series of dates, you can get the original table back.
+
+Generating the date series is the only database-specific part of this trick.
 This StackOverflow [answer](https://stackoverflow.com/a/32987070) describes how to do it in SQLite.
-Below, we are using a slight modification of that approach.
+Below example, uses a slight modification of that approach.
 
 ```sql
 -- generate a series of dates
@@ -140,6 +143,7 @@ select d.date,
        sc.item_name,
        sc.count
 from d
+-- join it with the compacted table
 inner join stock_compacted sc
 on d.date between sc.date_from and sc.date_to
 order by d.date, sc.item_name
@@ -148,7 +152,7 @@ order by d.date, sc.item_name
 
 
 ### Conclusion
-This trick is quite computationally expensive, so if you are not tight on storage, you might want to think twice before using it.
+This trick is quite computationally expensive. If you are not tight on storage, you might want to think twice before using it.
 Moreover, some database storages use compression, so the gain might not be as big as you'd expect.
 
 Anyway, even if you might never use it, I hope you appreciate its simple elegance as much as I do.
