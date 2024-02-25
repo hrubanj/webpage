@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "A Neat Trick for Compacting SQL Tables"
-date:   2024-01-28 00:00:00 +0000
+date:   2024-01-26 00:00:00 +0000
 categories: [programming, sql]
 ---
 
@@ -118,10 +118,10 @@ from temp_change_capture
 group by "item_name", "count", "change_indicator"
 ;
 ```
-You partition the table by `item_name` and assign row numbers ordered by date. 
-You also partition it by `item_name` and `count` and assign row numbers ordered by date. 
-Then, you compute the difference between these row numbers (`change_indicator`). 
-The `change_indicator` changes when the `count` changes but the `item_name` remains unchanged. .
+You partition the table by `item_name` and assign row numbers ordered by `date`. 
+You also partition it by `item_name` and `count` and assign row numbers ordered by `date`. 
+Then, you subtract one row number from the other (`change_indicator`). 
+The `change_indicator` changes only when the `count` changes while the `item_name` remains unchanged. .
 
 ### How to get the original table back?
 Join the compacted table with a series of dates. And voilà, you are back to the original table.
@@ -151,7 +151,8 @@ order by d."date", sc."item_name"
 
 
 ### Conclusion
-This trick is quite computationally expensive. If you are not tight on storage, you might want to think twice before using it.
+This trick is quite computationally expensive. 
+If you are not short on storage, you might want to think twice before using it.
 Moreover, some database storages use compression, so the gain might not be as big as you'd expect.
 
 Even if you might never need it, I hope you appreciate its simple elegance as much as I do.
