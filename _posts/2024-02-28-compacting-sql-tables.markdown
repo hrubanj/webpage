@@ -10,9 +10,9 @@ categories: [programming, sql]
 
 ### Introduction
 
-Back when I was writing a lot of ETL scripts, I learned a nice trick for compacting SQL tables. 
+Back when I was writing a lot of ETL scripts, I learned a nice trick for making SQL tables smaller. 
 As I am not writing that much SQL anymore, the muscle memory is fading away. 
-So, I decided to write it down. I hope that someone besides myself will find it useful.
+So, I decided to write it down. I hope that someone besides future me will find it useful.
 
 Suppose you have a table of items in stock that looks like this:
 
@@ -30,29 +30,29 @@ Suppose you have a table of items in stock that looks like this:
 
 There is `date`, `item_name`, and a value that changes over time (`count` in this case).
 
-In many rows, the count remains the same, and only the date changes. 
+In many rows, the `count` remains the same, and only the `date` changes. 
 This example has only a few rows. 
-Imagine a more realistic use-case–table with millions or billions of rows. 
-If you compact it and record only changes, you'll save a ton of space.
+Imagine a more realistic scenario–a table with millions or billions of rows. 
+If you compact it, and keep only changes, you'll save a ton of space.
 
 The compacted version can look something like this:
 
-| item\_name | count | date\_from | date\_to |
-| :--- | :--- | :--- | :--- |
-| apple | 10 | 2024-01-01 | 2024-01-03 |
-| orange | 4 | 2024-01-01 | 2024-01-05 |
-| apple | 5 | 2024-01-04 | 2024-01-06 |
-| orange | 7 | 2024-01-06 | 2024-01-06 |
-| apple | 6 | 2024-01-07 | 2024-01-14 |
-| orange | 6 | 2024-01-07 | 2024-01-07 |
-| orange | 10 | 2024-01-08 | 2024-01-14 |
+| item\_name | count | date\_from | date\_to   |
+|:-----------|:------|:-----------|:-----------|
+| apple      | 10    | 2024-01-01 | 2024-01-03 |
+| orange     | 4     | 2024-01-01 | 2024-01-05 |
+| apple      | 5     | 2024-01-04 | 2024-01-06 |
+| orange     | 7     | 2024-01-06 | 2024-01-06 |
+| apple      | 6     | 2024-01-07 | 2024-01-14 |
+| orange     | 6     | 2024-01-07 | 2024-01-07 |
+| orange     | 10    | 2024-01-08 | 2024-01-14 |
 
 Apart from being smaller, it is also easier to navigate. At least for me.
 
 ### The trick
-Let's actually create the table, so you can follow along.
+Let's first create the table, so you can follow along.
 All code below is for SQLite, but most of it should work in any SQL database.
-There are some online SQLite editors (e.g. [here](https://sqliteonline.com/), 
+There are some online SQLite editors, e.g. [here](https://sqliteonline.com/), 
 so you can try it out without installing anything.
 
 Create the original table:
@@ -66,7 +66,7 @@ create table stock
 ;
 ```
 
-Populate it with some data:
+Populate it:
 ```sql
 insert into stock
     (date, item_name, count)
@@ -120,15 +120,14 @@ group by item_name, count, change_indicator
 You partition the table by `item_name` and assign row numbers ordered by date. 
 You also partition it by `item_name` and `count` and assign row numbers ordered by date. 
 Then, you compute the difference between these row numbers (`change_indicator`). 
-The `change_indicator` changes when the `count` changes and the `item_name` remains unchanged.
-You can use it to find time periods when `count` did not change.
+The `change_indicator` changes when the `count` changes and the `item_name` remains unchanged. .
 
 ### How to get the original table back?
-If you join the compacted table with a series of dates, you can get the original table back.
+If you join the compacted table with a series of dates, you get the original table back.
 
 Generating the date series is the only database-specific part of this trick.
 This StackOverflow [answer](https://stackoverflow.com/a/32987070) describes how to do it in SQLite.
-Below example, uses a slight modification of that approach.
+Below example uses a slight modification of that approach.
 
 ```sql
 -- generate a series of dates
