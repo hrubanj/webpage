@@ -209,7 +209,7 @@ So what was the problem?
 Well, there were several:
 1. In the initial solution, I didn't realize that you can charge the battery from the grid. 
 I didn't know that it was possible, and sometimes even necessary.
-When no solar energy is arrives for too long, the battery can get discharged below the 10 % threshold.
+When no solar energy arrives for too long, the battery can get discharged below the 10 % threshold.
 So you need to charge it to prevent degradation. This was easy to fix.
 Not a major issue. (I've already fixed this in the above text to avoid confusion.)
 
