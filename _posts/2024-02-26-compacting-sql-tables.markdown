@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "A Neat Trick for Compacting SQL Tables"
-date:   2024-01-26 00:00:00 +0000
+date:   2024-02-26 00:00:00 +0000
 categories: [programming, sql]
 ---
 
