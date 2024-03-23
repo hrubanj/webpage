@@ -184,10 +184,22 @@ Optimum found: True
 ```
 Of course, these results are from dummy data. Getting a cost of -884326 EUR, i.e. a profit of 884326 would be pretty sick.
 
-### Accessing power plant production data
+### Power plant production data
+I ranted about the user unfriendliness of the power plant API in the previous post.
+Let me also say something positive about it. The API has a public part for fetching monitoring data.
+It is documented, quite easy to use and returns a JSON with current production, battery state, etc.
+We'll need those to feed the optimization algorithm above.
 
-### Weather data
+### Electricity prices
+The market regulator announces the electricity prices in advance. We'll predict only for the time when we know the prices.
+Trying to predict prices for longer period would likely bring only marginal improvement, but it would cost us a lot of work.
 
 ### Predicting power plant production
+public apis are imprecise
+very complex models are very complex
+we need only a short-term prediction
+
+### Prediction consumption
 
 ### Integration and UI
+Jinja
