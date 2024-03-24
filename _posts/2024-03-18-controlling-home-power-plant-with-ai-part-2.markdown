@@ -57,23 +57,19 @@ The full optimization code is thus quite concise.
 ```python
 def optimize(config: OptimizationConfig) -> OptimizationResult:
     solver = pywraplp.Solver.CreateSolver("SCIP")
-    supply_to_grid = [
-        solver.IntVar(0, 1, "") for _ in range(config.number_of_periods)
-    ]  # supplying energy to grid
-    charge_from_grid = [
-        solver.IntVar(0, 1, "") for _ in range(config.number_of_periods)
-    ]  # charging battery from grid
-    panels_on = [
-        solver.IntVar(0, 1, "") for _ in range(config.number_of_periods)
-    ]  # using energy from panels (not dumping it)
-    fraction_consumed_from_battery = [
-        solver.NumVar(0, 1, "") for _ in range(config.number_of_periods)
-    ]  # part of consumption from battery
-    consumption_from_battery = []
+    supply_to_grid = []  # supplying energy to grid
+    charge_from_grid = []  # charging battery from grid
+    panels_on = []  # using energy from panels (not dumping it)
+    fraction_consumed_from_battery = []  # part of consumption from battery
     ending_battery_level = []
     period_costs = []
 
     for index in range(config.number_of_periods):
+        supply_to_grid.append(solver.IntVar(0, 1, ""))
+        charge_from_grid.append(solver.IntVar(0, 1, ""))
+        panels_on.append(solver.IntVar(0, 1, ""))
+        fraction_consumed_from_battery.append(solver.NumVar(0, 1, ""))
+
         # constraints
         solver.Add(
             supply_to_grid[index] + charge_from_grid[index] <= 1
@@ -81,10 +77,10 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
         solver.Add(
             supply_to_grid[index] + (1 - panels_on[index]) <= 1
         )  # cannot supply and dump energy at the same time
+
         consumption_from_battery_per_period = (
             config.consumption[index] * fraction_consumed_from_battery[index]
         )
-        consumption_from_battery.append(consumption_from_battery_per_period)
         previous_battery_level = previous_value(
             index, ending_battery_level, default=config.initial_battery_level
         )
@@ -101,7 +97,7 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
             * config.max_grid_supply_per_period  # supplied to grid
         )
         solver.Add(
-            fraction_consumed_from_battery[index] * config.consumption[index]
+            consumption_from_battery_per_period
             <= previous_battery_level - config.min_battery_level
         )  # we cannot consume more than we have - minimum battery level
 
@@ -159,6 +155,7 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
         min_battery_level_reached=min(ending_battery_level),
         max_battery_level_reached=max(ending_battery_level),
     )
+
 ```
 The code introduces a few helper variables, but the core logic is what we described above it.
 The charging efficiency multipliers allow us to account for energy loss when charging from the grid or solar panels.
@@ -195,8 +192,16 @@ The market regulator announces the electricity prices in advance. We'll predict 
 Trying to predict prices for longer period would likely bring only marginal improvement, but it would cost us a lot of work.
 
 ### Predicting power plant production
-public apis are imprecise
-very complex models are very complex
+Garbage in, garbage out. We need reasonable good prediction of solar panel production so that the model can return
+meaningful results.
+
+There is several APIs that provide estimates of solar panel production. Some are even free(-ish).
+Outsourcing this problem would definitely be our go-to option if possible. We tested several APIs,
+and their prediction were just way off. We decided to build our own model.
+
+Data heavy & ML heavy models
+
+vs. rule based simple averaging + astronomy
 we need only a short-term prediction
 
 ### Prediction consumption
