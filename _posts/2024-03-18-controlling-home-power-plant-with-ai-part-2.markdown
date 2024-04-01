@@ -197,14 +197,38 @@ meaningful results.
 
 There is several APIs that provide estimates of solar panel production. Some are even free(-ish).
 Outsourcing this problem would definitely be our go-to option if possible. We tested several APIs,
-and their prediction were just way off. We decided to build our own model.
+and their prediction were just way off. Integrating a third-party solution that imprecise and likely inflexible
+did not seem like a good idea. We decided to build our own.
 
-Data heavy & ML heavy models
+We have encountered several interesting papers on similar topics, i.e. predicting solar panel production.
+None of them, however, seemed to be a good fit for our problem. They were usually too complex and were dealing with
+longer term predictions. We need predictions for only a couple of hours in advance. And we definitely do not need
+to use neural networks for that at this stage.
 
-vs. rule based simple averaging + astronomy
-we need only a short-term prediction
+In the end, we went for a super simple solution. We use a weighted average of the last few days of production to estimated
+daily production. Then distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
+Yes, it is super rough.
+Yes, we are neglecting factors such as cloud coverage, temperature, etc.
+Yes, we could use way more detailed prediction inputs.
 
-### Prediction consumption
+### Predicting consumption
+How consumption is distributed over the day plays a major role in the optimization.
+We decided that we will not try to schedule consumption, at least in this version.
+I.e. we will not launch home appliances at specific times, or recommend users to do so.
+We decided to only predict what the consumption will be in each period and optimize power plant settings based on that.
 
-### Integration and UI
-Jinja
+As always, we went for super easy solution. The users input estimated total consumption per day, and
+we distribute with heuristic weights throughout the day. There are different sets of weights for workdays and weekends.
+They are based on our own consumption patterns.
+
+### User interface
+- minimum user input necessary (only total consumption per day estimation)
+
+### Implementation & Technology
+Jinja - ChatGPT is super helpful in generating templates
+FastAPI - for serving the API, jobs
+SQLite - for storing the data
+Google OR-Tools - for optimization (seen above)
+Keep Sentry for error tracking, Telegram for notifications
+
+### Learnings
