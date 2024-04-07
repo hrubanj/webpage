@@ -13,7 +13,7 @@ As a brief reminder, we have solar panels and a battery. We can consume produced
 
 [Previously]({% post_url 2024-02-24-controlling-home-power-plant-with-ai-part-1 %}), we introduced a simple
 scheduler that let us preset when to charge the battery and when to discharge it. We learned that this
-was not quite what we needed. We have to add optimization, so it gives users something that they can't
+was not enough for what we needed. We have to add optimization, so it gives users something that they can't
 easily do themselves.
 
 In the following sections, we will discuss how our understanding of the problem evolved, we'll introduce our optimization
@@ -37,15 +37,16 @@ I was quite happy to learn that we got the fundamentals right.
 Let us first express the problem in somewhat formal terms.
 
 We have three binary switches:
-- `supply_to_grid` - whether we are selling electricity to the grid
+- `supply_to_grid` - whether we are preferring selling electricity over charging the battery
 - `charge_from_grid` - whether we are charging the battery from the grid
-- `panels_on` - whether the solar panels are activated
+- `allow_selling_to_grid` - whether the system is allowed to sell excess electricity to the grid
 Our goal is to decide when these switches should be on for several future time periods.
+The `allow_selling_to_grid` switch is a simple rule-based one. It is true if the selling price is positive.
+When the selling price is negative, it ensures that we are rather dumping the excess energy than selling it for a loss.
 
 Heuristically, we want to supply to grid when the price is high, and we have enough electricity to spare,
 We want to charge from the grid almost only when there is no solar energy and our battery would otherwise get
 discharged so much that it might get damaged.
-We want to have the panels on almost always, except when our battery is full and electricity selling price is negative.
 
 We can express a cost function using the above variables, buying and selling prices, consumption, and solar power production.
 Then, we impose constraints on the variables, e.g. that we cannot charge battery to more than its maximum capacity.
@@ -57,61 +58,84 @@ The full optimization code is thus quite concise.
 ```python
 def optimize(config: OptimizationConfig) -> OptimizationResult:
     solver = pywraplp.Solver.CreateSolver("SCIP")
+    allow_selling_to_grid = [
+        1 if price > 0 else 0 for price in config.selling_price
+    ]  # allow selling energy to grid
     supply_to_grid = []  # supplying energy to grid
     charge_from_grid = []  # charging battery from grid
-    panels_on = []  # using energy from panels (not dumping it)
-    fraction_consumed_from_battery = []  # part of consumption from battery
     ending_battery_level = []
     period_costs = []
+    consumed_from_sun = []
+    consumed_from_battery_share = []
+    consumed_from_battery = []
+    consumed_from_grid = []
+    dumped_energy = []
 
     for index in range(config.number_of_periods):
         supply_to_grid.append(solver.IntVar(0, 1, ""))
         charge_from_grid.append(solver.IntVar(0, 1, ""))
-        panels_on.append(solver.IntVar(0, 1, ""))
-        fraction_consumed_from_battery.append(solver.NumVar(0, 1, ""))
+        dumped_energy.append(solver.NumVar(0, config.max_battery_level, ""))
+        consumed_from_battery_share.append(solver.NumVar(0, 1, ""))
+
+        consumed_from_sun_per_period = min(
+            config.consumption[index], config.sun_energy[index]
+        )
+        consumed_from_sun.append(consumed_from_sun_per_period)
+        consumed_not_from_sun_per_period = max(
+            config.consumption[index] - consumed_from_sun_per_period, 0
+        )
+
+        consumed_from_battery_per_period = (
+            consumed_not_from_sun_per_period * consumed_from_battery_share[index]
+        )
+        consumed_from_battery.append(consumed_from_battery_per_period)
+        consumed_from_grid_per_period = consumed_not_from_sun_per_period * (
+            1 - consumed_from_battery_share[index]
+        )
+        consumed_from_grid.append(consumed_from_grid_per_period)
 
         # constraints
         solver.Add(
             supply_to_grid[index] + charge_from_grid[index] <= 1
         )  # cannot supply and charge at the same time
         solver.Add(
-            supply_to_grid[index] + (1 - panels_on[index]) <= 1
+            supply_to_grid[index] + (1 - allow_selling_to_grid[index]) <= 1
         )  # cannot supply and dump energy at the same time
 
-        consumption_from_battery_per_period = (
-            config.consumption[index] * fraction_consumed_from_battery[index]
-        )
         previous_battery_level = previous_value(
             index, ending_battery_level, default=config.initial_battery_level
         )
+        remaining_solar_energy_per_period = config.sun_charging_efficiency * (
+            config.sun_energy[index] - consumed_from_sun_per_period
+        )
         ending_battery_level.append(
             previous_battery_level
-            - consumption_from_battery_per_period  # consumed from battery
+            - consumed_from_battery_per_period
             + config.sun_charging_efficiency
-            * config.sun_energy[index]
-            * panels_on[index]  # charged from sun
+            * remaining_solar_energy_per_period
+            * (1 - supply_to_grid[index])
+            * config.sun_charging_efficiency  # charged from sun
             + config.grid_charging_efficiency
             * charge_from_grid[index]
-            * config.max_grid_charge_per_period  # charged from grid
-            - supply_to_grid[index]
-            * config.max_grid_supply_per_period  # supplied to grid
+            * config.max_grid_charge_per_period  # charged from grid,
+            - dumped_energy[index],  # hack to avoid using min(max_battery_level, this)
         )
         solver.Add(
-            consumption_from_battery_per_period
+            consumed_from_battery_per_period
             <= previous_battery_level - config.min_battery_level
         )  # we cannot consume more than we have - minimum battery level
 
         solver.Add(
             ending_battery_level[index] <= config.max_battery_level
-        )  # battery level cannot exceed max
+        )  # battery level cannot be above max
+
         solver.Add(
             ending_battery_level[index] >= config.min_battery_level
         )  # battery level cannot be below min
 
         # period_costs
         period_costs.append(
-            (1 - fraction_consumed_from_battery[index])
-            * (config.consumption[index])
+            consumed_from_grid_per_period
             * config.buying_price[index]  # energy consumed from grid (cost)
             + charge_from_grid[index]
             * config.buying_price[index]
@@ -119,7 +143,7 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
             - config.selling_price[index]
             * config.supplying_efficiency
             * supply_to_grid[index]
-            * config.sun_energy[index]  # energy supplied to grid (revenue)
+            * remaining_solar_energy_per_period  # energy supplied to grid (revenue)
         )
     # assume that the remaining energy in the battery is sold at the average price
     # (multiplied by -1 because it is a revenue, and we want a cost function)
@@ -145,13 +169,14 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
         charge_from_grid=[
             binary_int_var_to_bool(var.solution_value()) for var in charge_from_grid
         ],
-        panels_on=[binary_int_var_to_bool(var.solution_value()) for var in panels_on],
+        allow_selling_to_grid=[bool(val) for val in allow_selling_to_grid],
         ending_battery_level=ending_battery_level,
-        fraction_consumed_from_battery=[
-            var.solution_value() for var in fraction_consumed_from_battery
-        ],
         period_costs=[Cost(var.solution_value()) for var in period_costs],
         remaining_energy_cost=Cost(remaining_energy_cost.solution_value()),
+        consumed_from_sun=consumed_from_sun,
+        consumed_from_battery=[var.solution_value() for var in consumed_from_battery],
+        consumed_from_grid=[var.solution_value() for var in consumed_from_grid],
+        dumped_energy=[var.solution_value() for var in dumped_energy],
         min_battery_level_reached=min(ending_battery_level),
         max_battery_level_reached=max(ending_battery_level),
     )
@@ -159,7 +184,6 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
 ```
 The code introduces a few helper variables, but the core logic is what we described above it.
 The charging efficiency multipliers allow us to account for energy loss when charging from the grid or solar panels.
-The `fraction_consumed_from_battery` variable allows us to distribute our consumption between the battery and the grid.
 
 When we run it, we get the optimal values for switches in each period, but also several other metrics:
 ```
@@ -185,50 +209,153 @@ Of course, these results are from dummy data. Getting a cost of -884326 EUR, i.e
 I ranted about the user unfriendliness of the power plant API in the previous post.
 Let me also say something positive about it. The API has a public part for fetching monitoring data.
 It is documented, quite easy to use and returns a JSON with current production, battery state, etc.
-We'll need those to feed the optimization algorithm above.
+We'll collect those to feed the optimization algorithm above.
 
 ### Electricity prices
 The market regulator announces the electricity prices in advance. We'll predict only for the time when we know the prices.
 Trying to predict prices for longer period would likely bring only marginal improvement, but it would cost us a lot of work.
 
 ### Predicting power plant production
-Garbage in, garbage out. We need reasonable good prediction of solar panel production so that the model can return
+Garbage in, garbage out. We need reasonably good prediction of solar panel production so that the model can return
 meaningful results.
 
 There is several APIs that provide estimates of solar panel production. Some are even free(-ish).
 Outsourcing this problem would definitely be our go-to option if possible. We tested several APIs,
-and their prediction were just way off. Integrating a third-party solution that imprecise and likely inflexible
+and their prediction were just way off. Integrating a third-party solution that is imprecise and likely inflexible
 did not seem like a good idea. We decided to build our own.
 
-We have encountered several interesting papers on similar topics, i.e. predicting solar panel production.
+We have encountered several papers on topics such as predicting solar panel production.
 None of them, however, seemed to be a good fit for our problem. They were usually too complex and were dealing with
-longer term predictions. We need predictions for only a couple of hours in advance. And we definitely do not need
-to use neural networks for that at this stage.
+longer term predictions. Some of them left me feeling that their authors were more interested in applying fancy neural 
+networks rather than solving the problem. We need predictions for only a couple of hours in advance. And we want something
+simple so we can twist and bend it to our needs.
 
-In the end, we went for a super simple solution. We use a weighted average of the last few days of production to estimated
-daily production. Then distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
+This led us to a super simple solution. We use a weighted average of the last five days of production to estimate
+daily production. (Climate change might make me eat my words one day, but yesterday's weather is a good predictor of today's weather.)
+
+Then, we distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
+I.e. we basically estimate the electricity production from the angle of the sun and the time of the day.
+
 Yes, it is super rough.
-Yes, we are neglecting factors such as cloud coverage, temperature, etc.
-Yes, we could use way more detailed prediction inputs.
+And we are neglecting many factors such as cloud coverage, temperature, etc.
+But it is a reasonably good approximation.
 
 ### Predicting consumption
 How consumption is distributed over the day plays a major role in the optimization.
 We decided that we will not try to schedule consumption, at least in this version.
 I.e. we will not launch home appliances at specific times, or recommend users to do so.
-We decided to only predict what the consumption will be in each period and optimize power plant settings based on that.
+We only predict what the consumption will be in each period and optimize power plant settings based on that.
 
-As always, we went for super easy solution. The users input estimated total consumption per day, and
-we distribute with heuristic weights throughout the day. There are different sets of weights for workdays and weekends.
-They are based on our own consumption patterns.
+We opted for something simple again. The users input estimated total consumption per day, and
+we distribute it with heuristic weights throughout the day. We have two sets of weights–one for weekdays and the other for weekends.
+
 
 ### User interface
-- minimum user input necessary (only total consumption per day estimation)
+The failure of the scheduler from previous iteration taught us that we need to be more user-friendly.
+We increase user-friendliness in two ways: (1) we require very little input from the user, and (2) we provide a simple UI.
+The only thing that users need to input is the estimated daily consumption. Everything else is calculated for them.
+Furthermore, we will be estimating the consumption in the future, so they won't have to do even that.
+As for the UI, we learned that uploading JSON files via Telegram was not the way. Hence, we built a simple HTML form.
+We mentioned that there needs to be some kind of UI to allow users input estimated electricity consumption.
+
+**A form for inputting estimated consumption per day**
+
+![]({{ site.baseurl }}/assets/images/consumption_input_form.png)
+
+This lets users input the estimated daily consumption. The value with the highest timestamp is used for each day.
+
+**A form for inputting estimated default consumption**
+
+![]({{ site.baseurl }}/assets/images/consumption_input_default_form.png)
+
+Users can also input estimated default consumption. This is used when there is no daily-specific consumption.
+
+Additionally, we want to be able to show them what the model predicts and what the optimization suggests.
+This will let them oversee the model and point out potential issues.
+
+**Optimization runs**
+
+This page list results of optimization runs. Users can also launch new optimization runs manually.
+
+![]({{ site.baseurl }}/assets/images/optimization_runs.png)
+
+**Optimization result**
+
+This details the results of the optimization run. It shows the predicted consumption, solar panel production, and the optimization results.
+There is also a couple of charts showing the predictions and the optimization results.
+
+*Header with a part of optimization config*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_1.png)
+
+*Example of optimization results*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_2.png)
+
+*Battery level chart*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_3.png)
+
+*EUR cost chart*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_4.png)
+
+*Electricity from the Sun*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_5.png)
+
+*EUR buying and selling prices*
+
+![]({{ site.baseurl }}/assets/images/optimization_result_6.png)
+
+Let's describe the actual implementation in the next section.
 
 ### Implementation & Technology
-Jinja - ChatGPT is super helpful in generating templates
-FastAPI - for serving the API, jobs
-SQLite - for storing the data
-Google OR-Tools - for optimization (seen above)
-Keep Sentry for error tracking, Telegram for notifications
 
-### Learnings
+
+So, we need a frontend.
+
+Ouch!
+
+We don't want to turn this into a monster project, so a bunch of simple HTML forms will do. We built them using Jinja templates.
+ChatGPT turned out to be super helpful for this. We often just supplied a dataclass, and it spat out a template for us. Apart from
+the occasional field misalignments, it worked like a charm. Moreover, we were able to generate Javascript code for
+charts showing the predictions and optimization results almost by just copy-pasting ChatGPT's output.
+
+We used FastAPI to serve the API and the frontend. I prefer FastAPI over other Python as has a neat way of
+solving data validation, and it is well documented. I do not particularly care about it being fast, since speed is not
+a concern for this project.
+
+Since this is now a proper application, we should use an actual database. We opted for SQLite. It runs in-process, so it is
+easy to set up and use. We don't need to worry about setting up a database server, and we can easily back up the data.
+SQLite is not just a toy database as many tutorials might lead you to believe. It is pretty powerful.
+
+To keep things concise, we use FastAPI extension for scheduling cron jobs, so everything runs within the app.
+
+Optimization selects values for the switches for all 15-minute periods that we have data for starting from the next
+quarter-hour. We use conservative 15-minute periods to avoid overloading the manufacturer's API with too many requests,
+and to avoid too frequent changes in the power plant settings.
+
+Another job applies the optimization results to the power plant. It sends the values to the manufacturer's API.
+
+Lastly, we have a job that collects the data from the manufacturer's API and stores it in the database.
+
+The whole application is in a very POC-like state, but we do have some observability. We collect logs in a file, and we have a
+Sentry webhook set up to notify us of any errors.
+
+The server runs on our VPC. We made it accessible to whitelisted IPs only. A proper authentication mechanism would definitely be more
+user-friendly, but this was quicker.
+
+We do have bash scripts for deploying the app, building the docker image, and running it. All must currently be run
+locally, but using a proper CI/CD pipeline would be a good idea.
+
+There are absolutely no tests!
+
+To conclude, the app is light years away from being production-ready, but it is POC.
+
+### Learnings & Next Steps
+We have come a long way.
+We have a solution that does reasonably well. And non-programmers can inspect it.
+There is a ton of things that we need to improve.
+Most effort will probably go in two directions: ensuring that tha optimization results are not completely crazy, and
+stabilizing the app (adding tests, improving error handling, ...). Then, we'll focus on improving the predictions.
