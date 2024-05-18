@@ -8,8 +8,8 @@ categories: [ programming, optimization, electricity, ml, ai ]
 <a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
 
 ### Introduction
-In this post, explore how we improved our solution for controlling our home power plant.
-As a brief reminder, we have solar panels and a battery. We can consume produced energy or sell it to the grid.
+This post explores how we improved our solution for controlling our home power plant.
+As a brief reminder, we have solar panels and a battery. We can consume produced energy, store it, or sell it to the grid.
 
 [Previously]({% post_url 2024-02-24-controlling-home-power-plant-with-ai-part-1 %}), we introduced a simple
 scheduler that let us preset when to charge the battery and when to discharge it. We learned that this
@@ -40,13 +40,10 @@ We have three binary switches:
 - `supply_to_grid` - whether we are preferring selling electricity over charging the battery
 - `charge_from_grid` - whether we are charging the battery from the grid
 - `allow_selling_to_grid` - whether the system is allowed to sell excess electricity to the grid
+
 Our goal is to decide when these switches should be on for several future time periods.
 The `allow_selling_to_grid` switch is a simple rule-based one. It is true if the selling price is positive.
 When the selling price is negative, it ensures that we are rather dumping the excess energy than selling it for a loss.
-
-Heuristically, we want to supply to grid when the price is high, and we have enough electricity to spare,
-We want to charge from the grid almost only when there is no solar energy and our battery would otherwise get
-discharged so much that it might get damaged.
 
 We can express a cost function using the above variables, buying and selling prices, consumption, and solar power production.
 Then, we impose constraints on the variables, e.g. that we cannot charge battery to more than its maximum capacity.
@@ -118,7 +115,7 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
             + config.grid_charging_efficiency
             * charge_from_grid[index]
             * config.max_grid_charge_per_period  # charged from grid,
-            - dumped_energy[index],  # hack to avoid using min(max_battery_level, this)
+            - dumped_energy[index],
         )
         solver.Add(
             consumed_from_battery_per_period
@@ -212,7 +209,7 @@ It is documented, quite easy to use and returns a JSON with current production, 
 We'll collect those to feed the optimization algorithm above.
 
 ### Electricity prices
-The market regulator announces the electricity prices in advance. We'll predict only for the time when we know the prices.
+The market regulator announces the electricity prices in advance. We'll optimize only for the time when we know the prices.
 Trying to predict prices for longer period would likely bring only marginal improvement, but it would cost us a lot of work.
 
 ### Predicting power plant production
@@ -221,7 +218,7 @@ meaningful results.
 
 There is several APIs that provide estimates of solar panel production. Some are even free(-ish).
 Outsourcing this problem would definitely be our go-to option if possible. We tested several APIs,
-and their prediction were just way off. Integrating a third-party solution that is imprecise and likely inflexible
+and their predictions were just way off. Integrating a third-party solution that is imprecise and likely inflexible
 did not seem like a good idea. We decided to build our own.
 
 We have encountered several papers on topics such as predicting solar panel production.
@@ -231,13 +228,16 @@ networks rather than solving the problem. We need predictions for only a couple 
 simple so we can twist and bend it to our needs.
 
 This led us to a super simple solution. We use a weighted average of the last five days of production to estimate
-daily production. (Climate change might make me eat my words one day, but yesterday's weather is a good predictor of today's weather.)
+daily production. (Climate change might make me eat my words one day, but, so far, yesterday's weather is a good predictor of today's weather.)
+Think of a simple formula like this:
+```
+production[0] = (1/1 * production[-1] + ... + 1/5 * production[-5]) / (1 + ... + 1/5)
+```
 
 Then, we distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
 I.e. we basically estimate the electricity production from the angle of the sun and the time of the day.
 
-Yes, it is super rough.
-And we are neglecting many factors such as cloud coverage, temperature, etc.
+We are neglecting many factors such as cloud coverage, temperature, etc.
 But it is a reasonably good approximation.
 
 ### Predicting consumption
@@ -255,8 +255,8 @@ The failure of the scheduler from previous iteration taught us that we need to b
 We increase user-friendliness in two ways: (1) we require very little input from the user, and (2) we provide a simple UI.
 The only thing that users need to input is the estimated daily consumption. Everything else is calculated for them.
 Furthermore, we will be estimating the consumption in the future, so they won't have to do even that.
+
 As for the UI, we learned that uploading JSON files via Telegram was not the way. Hence, we built a simple HTML form.
-We mentioned that there needs to be some kind of UI to allow users input estimated electricity consumption.
 
 **A form for inputting estimated consumption per day**
 
@@ -313,18 +313,14 @@ Let's describe the actual implementation in the next section.
 ### Implementation & Technology
 
 
-So, we need a frontend.
-
-Ouch!
-
-We don't want to turn this into a monster project, so a bunch of simple HTML forms will do. We built them using Jinja templates.
-ChatGPT turned out to be super helpful for this. We often just supplied a dataclass, and it spat out a template for us. Apart from
+We essentially want to build a couple of simple HTML pages and tie them together.
+We built HTMLs using Jinja templates. ChatGPT turned out to be super helpful for this. We often just supplied a dataclass, and it spat out a template for us. Apart from
 the occasional field misalignments, it worked like a charm. Moreover, we were able to generate Javascript code for
 charts showing the predictions and optimization results almost by just copy-pasting ChatGPT's output.
 
 We used FastAPI to serve the API and the frontend. I prefer FastAPI over other Python as has a neat way of
-solving data validation, and it is well documented. I do not particularly care about it being fast, since speed is not
-a concern for this project.
+solving data validation, and it is well documented. Compared to Flask, FastAPI feels more opinionated, so I don't
+have to sort through 10 ways to do something when I'm prototyping.
 
 Since this is now a proper application, we should use an actual database. We opted for SQLite. It runs in-process, so it is
 easy to set up and use. We don't need to worry about setting up a database server, and we can easily back up the data.
@@ -336,26 +332,26 @@ Optimization selects values for the switches for all 15-minute periods that we h
 quarter-hour. We use conservative 15-minute periods to avoid overloading the manufacturer's API with too many requests,
 and to avoid too frequent changes in the power plant settings.
 
-Another job applies the optimization results to the power plant. It sends the values to the manufacturer's API.
-
-Lastly, we have a job that collects the data from the manufacturer's API and stores it in the database.
-
 The whole application is in a very POC-like state, but we do have some observability. We collect logs in a file, and we have a
 Sentry webhook set up to notify us of any errors.
 
-The server runs on our VPC. We made it accessible to whitelisted IPs only. A proper authentication mechanism would definitely be more
-user-friendly, but this was quicker.
+The server's docker container runs on our tiny VPC instance.
+Originally, we wanted to make it accessible to a list of IPs, but we quickly learned
+that managing the whitelist would be a pain.
+Instead, we implemented a password authentication with Oauth2. It was a bit more work but it is more secure and user-friendly.
+The FastAPI's [documentation](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) has a great chapter on how to do it, and we were able to follow it almost verbatim.
 
 We do have bash scripts for deploying the app, building the docker image, and running it. All must currently be run
 locally, but using a proper CI/CD pipeline would be a good idea.
 
-There are absolutely no tests!
+As with the previous iteration, there are absolutely no tests!
 
 To conclude, the app is light years away from being production-ready, but it is POC.
 
 ### Learnings & Next Steps
-We have come a long way.
-We have a solution that does reasonably well. And non-programmers can inspect it.
+We have come a long way since starting this series.
+We have an automated solution that does something and even non-programmers can inspect it.
 There is a ton of things that we need to improve.
 Most effort will probably go in two directions: ensuring that tha optimization results are not completely crazy, and
 stabilizing the app (adding tests, improving error handling, ...). Then, we'll focus on improving the predictions.
+Stay tuned for the next update.
