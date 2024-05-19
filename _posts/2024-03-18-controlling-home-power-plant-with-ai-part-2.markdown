@@ -9,21 +9,21 @@ categories: [ programming, optimization, electricity, ml, ai ]
 
 ### Introduction
 In a [previous post]({% post_url 2024-02-24-controlling-home-power-plant-with-ai-part-1 %}), we introduced our small solar power plant.
-We can consume the energy it produces, store it in a battery, or sell it to the grid.
 
-We developed a simple
+We can consume the energy it produces, store it in a battery, or sell it to the grid. We developed a simple
 scheduler that let us preset when to charge the battery, and when to use or sell the energy from it.
+
 The downside of such approach was that users still had to figure out the best settings by themselves.
 
 If we wanted to make their life easier, we needed to make it more autonomous.
 
-In the following sections, we'll discuss how our understanding of the problem evolved, we'll introduce our optimization
-method, and we'll explain how we predict variables going into the optimization. Next, we'll present our rudimentary UI, and
+In the following sections, we'll discuss how we adapted to this evolved understanding of the problem, we'll introduce our optimization
+method, and we'll explain how we predict variables going into the it. Next, we'll present our rudimentary UI, and
 show how it all works together.
 
 ## Defining the Problem
 ### New learnings
-Last time, we mentioned that electricity spot prices can sometimes be negative. That is bad if
+Last time, we mentioned that electricity [spot prices](https://www.investopedia.com/terms/s/spotprice.asp) can sometimes be negative. That is bad if
 you are selling electricity, but good if you are buying it. It might even make sense to buy and waste
 the energy, since you get paid for it.
 
@@ -39,7 +39,7 @@ Let's first discuss the underlying optimization problem. This will give us an id
 and what the implementation should look like.
 
 We can use three switches to control the power plant:
-- `supply_to_grid` - whether we are preferring selling electricity over charging the battery
+- `supply_to_grid` - whether we are preferring selling generated electricity over charging the battery
 - `charge_from_grid` - whether we are charging the battery from the grid
 - `allow_selling_to_grid` - whether the system is allowed to sell excess electricity to the grid
 
@@ -56,7 +56,7 @@ Summing costs for all periods will give us the total cost. We want to minimize i
 Once we express the problem formally, we can plug it into a linear solver.
 
 We opted for [Google OR-Tools](https://developers.google.com/optimization), as they are well-known and documented.
-Also, we wrote the previous scheduler in Python, and OR-Tools has a Python API. So, it was easy to integrate.
+Also, we wrote the previous scheduler in Python, and OR-Tools have a Python API. So, it was easy to integrate.
 
 This is the full optimization code:
 ```python
@@ -208,7 +208,7 @@ Max battery level reached: 581.0
 Total cost: -884326.7500000005
 Optimum found: True
 ```
-Of course, these results are from dummy data.
+Of course, these results are from dummy inputs.
 Getting a cost of -884,326 EUR, i.e. a profit of 884,326 EUR would be quite nice.
 At our power plant's scale, we are working with tens of EUR per day at most.
 
@@ -221,28 +221,30 @@ It returns  JSON with, e.g., current production, and battery state of charge. We
 ### Electricity prices
 The market regulator announces electricity prices in advance. We'll optimize only for the time when we know the prices.
 Trying to predict prices for longer period would likely bring only marginal improvement. And it would be a lot more work.
+(Due to the battery capacity, it almost never makes sense to store the energy for more than a day).
 
 ### Predicting power plant production
 There are several APIs that provide estimates of solar panel production.
 Some are even free(-ish). Outsourcing this problem would definitely be our go-to option if possible.
-We tested a few APIs, but their predictions were way off. Integrating a third-party solution that is imprecise did not seem like the best option.
-Paying a lot of money for a commercial solution does not align with our idea of a hobby project. We decided to build our own.
+We tested a few APIs, but their predictions were way off. Integrating a third-party solution that is imprecise did not seem like the best choice.
+Paying a lot of money for a commercial solution does not align with our idea of a hobby project. Hence, we had to build our own.
 
-I have skimmed several papers on topics such as predicting solar panel production. 
+I have skimmed several papers on topics like predicting solar panel production and sunlight intensity. 
 None of them seemed to be a good fit for our problem. 
 They were usually too complex, and were dealing with longer term predictions. 
 Some authors seemed to care more about applying neural networks than finding a practical solution. 
-We need predictions for only a couple of hours in advance. And we want something simple so we can twist and bend it to our needs.
+We need predictions for only a couple of hours in advance. And we want a non-complicated solution, so we can adapt it to our needs.
 
-This led us to a super simple solution.
+This led us to a super simple approach.
 We use a weighted average of the last five days of production to estimate daily production.
 (Yesterday's weather is an ok predictor of today's weather.)
+
 Think of a formula like this:
 ```
 production[0] = (1/1 * production[-1] + ... + 1/5 * production[-5]) / (1 + ... + 1/5)
 ```
 
-Then, we distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
+Then, we distribute the production over the day using sunlight intensity calculation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
 I.e., we basically estimate the sunlight intensity based on geographical location and time of the day.
 
 Off course, we are neglecting many factors such as cloud cover and temperature.
@@ -251,7 +253,7 @@ Time will tell if the approximation is good enough.
 ### Predicting consumption
 When and how much electricity we consume throughout the day is one of the most important inputs.
 We decided that we will not try to schedule consumption, at least not in this version.
-I.e., we will not launch home appliances at specific times, or recommend users to do so.
+Meaning that, we will not launch home appliances at specific times, or recommend users to do so.
 We only predict what the consumption will be in each period.
 
 The users input estimated total consumption per day.
@@ -263,6 +265,7 @@ We use two sets of weights–one for weekdays and the other for weekends.
 ### User interface
 The failure of the scheduler taught us that we need to be more user-friendly.
 We got there in two ways: (1) we demand very little input from users, and (2) we provide a UI.
+
 The only thing that users need to input is the estimated daily consumption.
 Furthermore, we will be estimating the consumption in the future, so users won't even have to do that.
 
@@ -272,7 +275,7 @@ As for the UI, we use several HTML pages.
 
 ![]({{ site.baseurl }}/assets/images/consumption_input_form.png)
 
-This lets users input the estimated daily consumption. The value with the highest timestamp gets selected for each day.
+This lets users input the estimated daily consumption.
 
 **A form for inputting estimated default consumption**
 
@@ -329,7 +332,7 @@ Let's describe the actual implementation in the next section.
 We created the HTML pages using Jinja templates.
 ChatGPT turned out to be super helpful for this.
 We often just supplied a Python dataclass, and it spat out a template for us.
-Apart from the occasional field misalignment, it worked like a charm.
+Apart from the occasional form header-field misalignment, it worked like a charm.
 Moreover, we generated most of Javascript code for charts by copy-pasting ChatGPT's output.
 
 Our server uses FastAPI. I prefer it over other Python frameworks as it has a neat way of solving data validation.
@@ -338,14 +341,14 @@ Compared to Flask, FastAPI feels more opinionated. So you don't have to sort thr
 Since there is now a lot more data manipulation, the application needs a proper database. We went for SQLite.
 It runs in-process, so it is easy to set up and use. We don't need to worry about managing a database server, and we can back up the data easily.
 
-To keep things simple, we use a FastAPI extension for scheduling cron jobs. So everything runs within the app.
+To keep things simple, we use a FastAPI extension for scheduling cron jobs. Hence, everything runs within the app.
 
 Optimization selects values for the switches for all 15-minute periods that we have data for.
 We use 15-minute intervals to avoid overloading the power plant manufacturer's API with too many requests.
 
 The optimization runs in every period to account for the latest available data.
 
-Although, the whole application is still in its infancy, we do have some monitoring. We collect logs to a file, and we have a
+Although, the whole application is still in its infancy, we do have some monitoring. We write logs to a file, and we have a
 Sentry webhook set up to notify us of any errors.
 
 The server's docker container runs on our tiny VPC instance.
