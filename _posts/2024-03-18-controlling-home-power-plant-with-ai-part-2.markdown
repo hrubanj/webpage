@@ -8,17 +8,17 @@ categories: [ programming, optimization, electricity, ml, ai ]
 <a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
 
 ### Introduction
-In the [previous post]({% post_url 2024-02-24-controlling-home-power-plant-with-ai-part-1 %}), we introduced a small solar power plant.
-We can consume the energy it produces, store it in its battery, or sell it to the grid.
+In a [previous post]({% post_url 2024-02-24-controlling-home-power-plant-with-ai-part-1 %}), we introduced our small solar power plant.
+We can consume the energy it produces, store it in a battery, or sell it to the grid.
 
-Previously, we developed a simple
-scheduler that let us preset when to charge the battery and when to discharge it.
+We developed a simple
+scheduler that let us preset when to charge the battery, and when to use or sell the energy from it.
 The downside of such approach was that users still had to figure out the best settings by themselves.
 
-If we wanted to help users, we needed to make the system more autonomous.
+If we wanted to make their life easier, we needed to make it more autonomous.
 
-In the following sections, we will discuss how our understanding of the problem evolved, we'll introduce our optimization
-method, and we'll show how we predict variables going into the optimization. Next, we'll present our rudimentary UI, and
+In the following sections, we'll discuss how our understanding of the problem evolved, we'll introduce our optimization
+method, and we'll explain how we predict variables going into the optimization. Next, we'll present our rudimentary UI, and
 show how it all works together.
 
 ## Defining the Problem
@@ -32,30 +32,28 @@ fee to the grid operator. If you are buying, you pay the spot price plus several
 Even if the spot price is negative, the final buying price never is. It can be in theory, but we have not seen any
 such situation in historical data.
 
-Luckily, this does not change our understanding of the problem.
-
 Other than that, our assumptions laid our in the previous post seem to hold.
 
 ### Optimization
-Let's first discuss the underlying optimization problem. This will give us an idea about what input data we need
-and how the implementation should look like.
+Let's first discuss the underlying optimization problem. This will give us an idea about what input data we need,
+and what the implementation should look like.
 
 We can use three switches to control the power plant:
 - `supply_to_grid` - whether we are preferring selling electricity over charging the battery
 - `charge_from_grid` - whether we are charging the battery from the grid
 - `allow_selling_to_grid` - whether the system is allowed to sell excess electricity to the grid
 
-(The switches are mapped to parameters of the power plant's API.)
+The switches are mapped to parameters of the power plant's API.
 
 Our goal is to decide when each switch should be on.
-The `allow_selling_to_grid` switch is rule-based. It is true if the selling price is positive.
+The `allow_selling_to_grid` switch is true if the selling price is positive.
 When the selling price is negative or zero, it ensures that we are rather dumping the excess energy than selling it for a loss.
 
 We can express a cost function using the above variables, buying and selling prices, consumption, and solar power production.
-Then, we impose constraints on the variables, e.g. that we cannot charge battery to more than its maximum capacity.
+Then, we impose constraints on the variables, e.g., that we cannot charge battery to more than its maximum capacity.
 Summing costs for all periods will give us the total cost. We want to minimize it.
 
-Having formalized the problem, we can plug it into linear solver.
+Once we express the problem formally, we can plug it into a linear solver.
 
 We opted for [Google OR-Tools](https://developers.google.com/optimization), as they are well-known and documented.
 Also, we wrote the previous scheduler in Python, and OR-Tools has a Python API. So, it was easy to integrate.
@@ -189,9 +187,9 @@ def optimize(config: OptimizationConfig) -> OptimizationResult:
 
 ```
 The code introduces a few helper variables, but the core logic is what we described above.
-The charging efficiency multipliers let us account for energy loss during transfers
+The charging efficiency multipliers let us account for energy loss during transfers.
 
-When we run it, we get the optimal values for switches in several upcoming periods.
+When we run it, we get optimal values for switches in upcoming periods.
 We also get several other metrics:
 ```
 Configs:
@@ -210,13 +208,15 @@ Max battery level reached: 581.0
 Total cost: -884326.7500000005
 Optimum found: True
 ```
-Of course, these results are from dummy data. Getting a cost of -884,326 EUR, i.e. a profit of 884,326 EUR would be quite nice.
+Of course, these results are from dummy data.
+Getting a cost of -884,326 EUR, i.e. a profit of 884,326 EUR would be quite nice.
+At our power plant's scale, we are working with tens of EUR per day at most.
 
 ## Data for Optimization
 ### Power plant production data
-I ranted about the user unfriendliness of the power plant API in the previous post. 
+I ranted about how user-unfriendly the power plant API is the previous post. 
 Let me also say something positive about it. The API has a documented public part for fetching monitoring data. 
-It returns  JSON with, e.g., current production, and battery state of charge. We'll collect those to feed the optimization algorithm above.
+It returns  JSON with, e.g., current production, and battery state of charge. We'll collect those to feed our optimization algorithm.
 
 ### Electricity prices
 The market regulator announces electricity prices in advance. We'll optimize only for the time when we know the prices.
@@ -225,7 +225,7 @@ Trying to predict prices for longer period would likely bring only marginal impr
 ### Predicting power plant production
 There are several APIs that provide estimates of solar panel production.
 Some are even free(-ish). Outsourcing this problem would definitely be our go-to option if possible.
-We tested a few APIs, but their predictions were way off. Integrating a third-party solution that is imprecise  did not seem like the best option.
+We tested a few APIs, but their predictions were way off. Integrating a third-party solution that is imprecise did not seem like the best option.
 Paying a lot of money for a commercial solution does not align with our idea of a hobby project. We decided to build our own.
 
 I have skimmed several papers on topics such as predicting solar panel production. 
@@ -243,25 +243,26 @@ production[0] = (1/1 * production[-1] + ... + 1/5 * production[-5]) / (1 + ... +
 ```
 
 Then, we distribute the production over the day using sunlight intensity approximation (see [this](https://astronomy.stackexchange.com/a/25801) StackExchange answer).
-I.e., we basically estimate the electricity production from the angle of sun rays and the time of the day.
+I.e., we basically estimate the sunlight intensity based on geographical location and time of the day.
 
 Off course, we are neglecting many factors such as cloud cover and temperature.
 Time will tell if the approximation is good enough.
 
 ### Predicting consumption
 When and how much electricity we consume throughout the day is one of the most important inputs.
-We decided that we will not try to schedule consumption, at least in this version.
+We decided that we will not try to schedule consumption, at least not in this version.
 I.e., we will not launch home appliances at specific times, or recommend users to do so.
 We only predict what the consumption will be in each period.
 
-We opted for something simple again. The users input estimated total consumption per day.
-We then spread it throughout the day with heuristic weights. We use two sets of weights–one for weekdays and the other for weekends.
+The users input estimated total consumption per day.
+We then spread it throughout the day with heuristic weights.
+We use two sets of weights–one for weekdays and the other for weekends.
 
 
 ## Implementation
 ### User interface
 The failure of the scheduler taught us that we need to be more user-friendly.
-We got there in two ways: (1) we need very little input from the user, and (2) we provide a simple UI.
+We got there in two ways: (1) we demand very little input from users, and (2) we provide a UI.
 The only thing that users need to input is the estimated daily consumption.
 Furthermore, we will be estimating the consumption in the future, so users won't even have to do that.
 
@@ -279,8 +280,8 @@ This lets users input the estimated daily consumption. The value with the highes
 
 Users can also input estimated default consumption. This gets used when there is no daily-specific consumption.
 
-Additionally, we want let users see what the optimization suggests.
-This will let them oversee the model and point out potential issues.
+Additionally, we want to let users see what the optimization suggests.
+Then, they will be able to point out potential issues.
 
 **Optimization runs**
 
@@ -321,44 +322,43 @@ We also added several charts.
 ![]({{ site.baseurl }}/assets/images/optimization_result_6.png)
 You can see that buying price is the selling price plus a constant.
 
-
-
 Let's describe the actual implementation in the next section.
 
 ### Implementation & Technology
 
-We created the HTMLs using Jinja templates.
+We created the HTML pages using Jinja templates.
 ChatGPT turned out to be super helpful for this.
 We often just supplied a Python dataclass, and it spat out a template for us.
 Apart from the occasional field misalignment, it worked like a charm.
 Moreover, we generated most of Javascript code for charts by copy-pasting ChatGPT's output.
 
-Our server uses FastAPI. I prefer it over other Python frameworks as  it has a neat way of solving data validation.
-Compared to Flask, FastAPI feels more opinionated. So I don't have to sort through 10 ways of doing something when I'm prototyping.
+Our server uses FastAPI. I prefer it over other Python frameworks as it has a neat way of solving data validation.
+Compared to Flask, FastAPI feels more opinionated. So you don't have to sort through 10 ways of doing something when you are prototyping.
 
 Since there is now a lot more data manipulation, the application needs a proper database. We went for SQLite.
-It runs in-process, so it is easy to set up and use. We don't need to worry about setting up a database server, and we can back up the data easily.
+It runs in-process, so it is easy to set up and use. We don't need to worry about managing a database server, and we can back up the data easily.
 
 To keep things simple, we use a FastAPI extension for scheduling cron jobs. So everything runs within the app.
 
-Optimization selects values for the switches for all 15-minute periods that we have data for .
-We use conservative 15-minute intervals to avoid overloading the power plant manufacturer's API with too many requests.
+Optimization selects values for the switches for all 15-minute periods that we have data for.
+We use 15-minute intervals to avoid overloading the power plant manufacturer's API with too many requests.
 
-The optimization runs every in every period to account for the latest data.
+The optimization runs in every period to account for the latest available data.
 
 Although, the whole application is still in its infancy, we do have some monitoring. We collect logs to a file, and we have a
 Sentry webhook set up to notify us of any errors.
 
 The server's docker container runs on our tiny VPC instance.
-Originally, we wanted to make it accessible to a list of IPs. 
-We soon  learned that managing the whitelist is too much of a pain.
+Originally, we wanted to make it accessible from whitelisted IPs. 
+We soon learned that managing the whitelist is a pain.
 Instead, we implemented a password authentication with Oauth2.
 It was a bit more work but it is more secure and user-friendly.
-The FastAPI [documentation](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) has a tutorial on how to do it, and we were able to follow it almost verbatim.
+The FastAPI [documentation](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) includes a tutorial on how to do it,
+and we were able to follow it almost verbatim.
 
-We have bash scripts for deploying the app, building the docker image, and running it.
+We wrote bash scripts for deploying the app, building the docker image, and running it.
 
-As with the previous iteration, there are no tests.
+As with the previous iteration, there are still no tests.
 
 ### What's next
 We have come a long way since starting this series.
@@ -367,8 +367,8 @@ Non-programmers can inspect it and control it.
 
 There is a ton of things that we can improve.
 To give you a taste:
-(1) our approximation of consumption throughout the day  seems to be off.
-(2) Scheduling consumption turns out to be one of the most efficient ways to save energy.
-(3) Electricity selling prices have been low recently. We might want to look for for alternative ways to use the excess production.
+1. Our approximation of consumption throughout the day seems to be off.
+2. Scheduling consumption turns out to be one of the most efficient ways to save energy.
+3. Electricity selling prices have been low recently. We might want to look for alternative ways to use the excess production.
 
 Stay tuned for the next update!
