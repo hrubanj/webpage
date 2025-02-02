@@ -8,7 +8,7 @@ categories: [books]
 <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
 <a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
 
-## Introduction
+
 Last year, I went through the books I read the year prior and highlighted the ones that impressed me the most.
 I turned out to be a useful exercise. It helped me remember the books better and also to reflect on what I liked about them.
 So, I decided to do it again this year. Here are my top 5 books of 2024.
@@ -118,4 +118,8 @@ Informative and engaging. Highly recommended.
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/not_the_end_of_the_world.jpg" width="200" height="auto" /></div>
 <br/><br/>
+
+## Closing thoughts
+Choosing only five books was painfully difficult. There were many more that I would love to recommend, but I wanted to keep
+this writeup brief. If you are interested in more recommendations, let me know.
 
