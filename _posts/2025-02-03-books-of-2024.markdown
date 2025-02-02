@@ -76,13 +76,45 @@ If you like wolves, you will love this book.
 ### Africa is Not a Country by  by Dipo Faloyin
 Dipo Faloyin tears down the idea of Africa as a monolithic grim place that needs saving from Westerners with Messiah complexes.
 
+To say that Western public's perception of Africa is not nuanced would be an understatement. Media portray it as a place where wild
+animals roam everywhere, uncivilized people live in primitive huts and make living by hunting said animals.
+Evil and corrupt warlords fight each other for power, and there is no hope of establishing functioning states.
+
+The reality is vastly different. Africa is a continent of many diverse countries, with millions of people living in cities,  and working in offices.
+These countries have their unique culture, music, cuisine, and literature.
+The mainstream narrative that Africans are not self-sufficient ignores that many African countries are independent, democratic, and peaceful.
+Emotionally appealing ads with babies with inflated bellies and flies on their faces are designed to make donors feel good about themselves,
+but many people living in Africa actually hate them. For obvious reasons–they are dehumanizing and perpetuate the idea that Africans are helpless savages.
+
+Faloyin also discusses efforts to bring back stolen African art and artifacts from Western museums. Some people in the West argue
+that Africans are not ready to take care of their own heritage while we, i.e. the West, can provide the best care possible. So, taking care of it on their behalf is the right thing to do.
+Moreover, they claim that anyone can see the art in Western museums, so, what is the problem?
+Ironically, none of these assertions is true–Faloyin documents numerous instances where African art is either hidden in museum basements,
+and thus not available to the public, or it is stored in suboptimal conditions that damage the art.
+
+Africa is Not a Country is a great book that can make you interested, entertained and furious often within a single page.
+
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/africa_is_not_a_country.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### Not the End of the World by Hannah Ritchie
-Hannah Ritchie's book is rare. She writes about environment in a way that makes you hopeful. She also provides well-researched and actionable advice
-that you can follow in everyday life.
+Hannah Ritchie's book is refreshing. She writes about environment in a way that makes you hopeful and provides actionable advice
+that you can actually follow.
 
+Opportunistic politicians and unethical business interests often complicate environmental protection.
+A lot of literature on the topic tends to be quite pessimistic, cataloguing our failures to implement even some basic measures.
+Ritchie, however, tries not to give in to the disillusionment. She shows that real progress has been made. Often, governments
+were forced to act not because people would suddenly start caring about the environment, but because people started demanding
+cleaner cities as their living standards increased. She demonstrates that developed countries improved in several metrics in
+envirnmental pollution in the last couple of years even if you account for emissions exported to developing countries.
+She does not claim that everything is fine, and we should just sit on out hands, but rather points out that there is a way forward, and
+that the there are degrees to which we can mess the environment up–not just binary 'apocalypse' or 'sunshine and rainbows'.
+
+Ritchie translates the more objective approach to environmental protection also to individual actions. She compares who you
+can do to reduce carbon emissions and what are the relative effects–turns out not flying and not owning a car save a lot of CO2
+while using plastic straws and bags is not that big of a deal.
+
+Informative and engaging. Highly recommended.
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/not_the_end_of_the_world.jpg" width="200" height="auto" /></div>
 <br/><br/>
