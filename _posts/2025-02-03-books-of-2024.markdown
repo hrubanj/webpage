@@ -1,0 +1,89 @@
+---
+layout: post
+title:  "My Top 5 Books of 2024"
+date:   2025-01-13 10:00:00 +0000
+categories: [books]
+---
+
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
+
+## Introduction
+Last year, I went through the books I read the year prior and highlighted the ones that impressed me the most.
+I turned out to be a useful exercise. It helped me remember the books better and also to reflect on what I liked about them.
+So, I decided to do it again this year. Here are my top 5 books of 2024.
+
+### A Problem from Hell: America and the Age of Genocide by Samantha Power
+Samantha Power documents how the US and the world have responded to genocides in the 20th century.
+Disturbingly, the reactions were often late and lukewarm. The genocides did not occur out of the blue.
+Usually, tensions were building up for years, but officials were reluctant to act. They irrationally believed that would-be
+genocide perpetrators would respect international law, and that they would not engage in violence that would undermine their legitimacy.
+Politicians were far too keen to take words of mass murderers at face value, and far too hesitant to risk their popular support to help the victims.
+
+Power also writes about several bright exceptions–activists, politicians, journalists–that made it their lives' mission to prevent genocide, and
+help the victims. Thanks to them, genocide is an international crime and several perpetrators have been convicted of it. The enforceability of anti-genocide
+conventions will probably always be problematic, since many countries refuse to let international courts try their citizens.
+But is it better to have an imperfect solution than no solution.
+
+The book is a wake-up call to everyone who, knowingly or not, engages in wishful thinking. We should not discard
+the worst-case scenario even if it contradicts our worldview that people are generally good and rational. Some are not. 
+
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/a_problem_from_hell.png" width="200" height="auto" /></div>
+<br/><br/>
+
+### Determined: A Science of Life without Free Will by Robert Sapolsky
+When does free will come into play? At what stage of making a movement, saying a word, or thinking a thought do
+we make a decision that is completely independent of our environment and our past experiences? Sapolsky argues that
+we never do.
+
+The logic is hard to argue with: Any decision you make is a combination of your genetics, your upbringing and your environment.
+You can always go up the chain of causality and find a reason why you made a decision.
+Each event in the chain can have multiple causes and multiple effects, but the effect is always determined by the causes.
+Even if you say: 'I'm going to eat this cookie because I want to', you can ask yourself why you want to eat the cookie.
+And whether you decide to eat it or not, you have not decided freely.
+
+The most intriguing part of the book is the implications of the lack of free will. Sapolsky argues that a significant share
+of violence and crime is connected to traumatic brain injuries. At a risk of oversimplifying, people who have been hit in the head
+and their brain has been damaged are more likely to commit violent crimes. This should not absolve them of responsibility, but it
+can let us prevent future crimes. If that a person with traumatic brain injury is more likely to commit a crime,
+we should try to do as much as we can to prevent and treat such injuries.
+
+Should the existence or non-existence of free will guide your everyday decisions (pun intended)? I think this leads us to a Pascal's wager-like
+situation. If free will doesn't exist, then you don't make any independent decisions. If it does exist, you should make decisions that make your live
+more meaningful and fulfilling. The worst-case scenario is that you will live thinking that you are doing your best whilst having no actual choice.
+
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/determined.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### The Rise of Wolf 8: Witnessing the Triumph of Yellowstone's Underdog by Rick McIntyre
+I like wolves. I'm yet to meet one in the wild, but I've read about them so much, and they never stop fascinating me.
+Rick McIntyre amassed hundreds of hours of wolf observation in Yellowstone National Park. He reconstructed the lives of several wolf packs.
+
+The dynamics of a wolf pack is a way more complex than you might imagine.
+Leaders of some packs might be relatively small, but extremely courageous and smart. Some alpha pairs are chilled out and let their subordinates
+show their talents. Some are aggressive and paranoid
+Adult wolves play-fight with pups, and let them win. They also play-fight with each other, and let the weaker wolf win.
+Wolf pups play games just to have fun or to learn how to hunt.
+From time to time, a wolf is exiled from the pack or leaves voluntarily. He either decides to live alone, join another pack, or start his own.
+
+If you like wolves, you will love this book.
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/the_rise_of_wolf_8.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### Africa is Not a Country by  by Dipo Faloyin
+Dipo Faloyin tears down the idea of Africa as a monolithic grim place that needs saving from Westerners with Messiah complexes.
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/africa_is_not_a_country.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### Not the End of the World by Hannah Ritchie
+Hannah Ritchie's book is rare. She writes about environment in a way that makes you hopeful. She also provides well-researched and actionable advice
+that you can follow in everyday life.
+
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/not_the_end_of_the_world.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
