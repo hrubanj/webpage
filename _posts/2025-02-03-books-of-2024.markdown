@@ -9,117 +9,99 @@ categories: [books]
 <a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
 
 
-Last year, I went through the books I read the year prior and highlighted the ones that impressed me the most.
-I turned out to be a useful exercise. It helped me remember the books better and also to reflect on what I liked about them.
-So, I decided to do it again this year. Here are my top 5 books of 2024.
+Last year, I revisited my favorite reads from the year before—
+it helped me remember them and understand why they stood out.
+In that spirit, here are my top five books of 2024.
 
 ### A Problem from Hell: America and the Age of Genocide by Samantha Power
-Samantha Power documents how the US and the world have responded to genocides in the 20th century.
-Disturbingly, the reactions were often late and lukewarm. The genocides did not occur out of the blue.
-Usually, tensions were building up for years, but officials were reluctant to act. They irrationally believed that would-be
-genocide perpetrators would respect international law, and that they would not engage in violence that would undermine their legitimacy.
-Politicians were far too keen to take words of mass murderers at face value, and far too hesitant to risk their popular support to help the victims.
+Samantha Power examines how the U.S. and the world responded to 20th-century genocides—often too late and too weakly.
+These atrocities didn’t erupt overnight; tensions brewed for years.
+Officials hesitated, clinging to the naive belief that perpetrators would respect international law.
+Politicians too often took mass murderers at their word, unwilling to risk political capital to help victims.
 
-Power also writes about several bright exceptions–activists, politicians, journalists–that made it their lives' mission to prevent genocide, and
-help the victims. Thanks to them, genocide is an international crime and several perpetrators have been convicted of it. The enforceability of anti-genocide
-conventions will probably always be problematic, since many countries refuse to let international courts try their citizens.
-But is it better to have an imperfect solution than no solution.
+Yet, Power also highlights activists, politicians, and journalists who fought to prevent genocide and hold perpetrators accountable.
+Thanks to their efforts, genocide is now an international crime, though enforcement remains fraught—many nations refuse to let international courts prosecute their citizens.
+An imperfect system, but better than none.
 
-The book is a wake-up call to everyone who, knowingly or not, engages in wishful thinking. We should not discard
-the worst-case scenario even if it contradicts our worldview that people are generally good and rational. Some are not. 
+This book is a wake-up call against wishful thinking. Ignoring worst-case scenarios won’t make them less real.
+Most people are good and rational. But some are not, and we must reckon with that.
 
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/a_problem_from_hell.png" width="200" height="auto" /></div>
 <br/><br/>
 
 ### Determined: A Science of Life without Free Will by Robert Sapolsky
-When does free will come into play? At what stage of making a movement, saying a word, or thinking a thought do
-we make a decision that is completely independent of our environment and our past experiences? Sapolsky argues that
-we never do.
+When does free will come into play? At what point in speaking, moving, or thinking do we make a choice independent of our past and environment?
+Sapolsky’s answer: never.
 
-The logic is hard to argue with: Any decision you make is a combination of your genetics, your upbringing and your environment.
-You can always go up the chain of causality and find a reason why you made a decision.
-Each event in the chain can have multiple causes and multiple effects, but the effect is always determined by the causes.
-Even if you say: 'I'm going to eat this cookie because I want to', you can ask yourself why you want to eat the cookie.
-And whether you decide to eat it or not, you have not decided freely.
+His logic is difficult to refute—every decision stems from genetics, upbringing, and circumstances.
+Trace any choice back, and you’ll find a chain of causes.
+Even if you think, I’ll eat this cookie because I want to, the desire itself has a cause.
+Whether you eat it or not, the choice was never truly free.
 
-The most intriguing part of the book is the implications of the lack of free will. Sapolsky argues that a significant share
-of violence and crime is connected to traumatic brain injuries. At a risk of oversimplifying, people who have been hit in the head
-and their brain has been damaged are more likely to commit violent crimes. This should not absolve them of responsibility, but it
-can let us prevent future crimes. If that a person with traumatic brain injury is more likely to commit a crime,
-we should try to do as much as we can to prevent and treat such injuries.
+What struck me most were the book’s real-world implications.
+Sapolsky highlights research linking violent crime to traumatic brain injuries—damaged brains make people more prone to violence.
+This doesn’t absolve them of responsibility, but it suggests that preventing and treating brain injuries could reduce crime.
+Instead of focusing solely on punishment, we should address the root causes.
 
-Should the existence or non-existence of free will guide your everyday decisions (pun intended)? I think this leads us to a Pascal's wager-like
-situation. If free will doesn't exist, then you don't make any independent decisions. If it does exist, you should make decisions that make your live
-more meaningful and fulfilling. The worst-case scenario is that you will live thinking that you are doing your best whilst having no actual choice.
+Should the existence of free will shape your daily choices?
+I don’t think so. If free will is an illusion, you were never truly choosing anyway
+If it exists, you should still make decisions that bring meaning and fulfillment.
+Either way, the outcome is the same: living as if your choices matter—whether they truly do or not.
 
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/determined.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### The Rise of Wolf 8: Witnessing the Triumph of Yellowstone's Underdog by Rick McIntyre
-I like wolves. I'm yet to meet one in the wild, but I've read about them so much, and they never stop fascinating me.
-Rick McIntyre amassed hundreds of hours of wolf observation in Yellowstone National Park. He reconstructed the lives of several wolf packs.
+I like wolves. I’ve yet to see one in the wild, but I’ve read enough to know they never stop fascinating me.
 
-The dynamics of a wolf pack is a way more complex than you might imagine.
-Leaders of some packs might be relatively small, but extremely courageous and smart. Some alpha pairs are chilled out and let their subordinates
-show their talents. Some are aggressive and paranoid
-Adult wolves play-fight with pups, and let them win. They also play-fight with each other, and let the weaker wolf win.
-Wolf pups play games just to have fun or to learn how to hunt.
-From time to time, a wolf is exiled from the pack or leaves voluntarily. He either decides to live alone, join another pack, or start his own.
+Rick McIntyre spent thousands of hours observing Yellowstone’s wolves, piecing together the lives of entire packs.
+Their dynamics are far more complex than you might think. Some leaders are small but fearless and intelligent.
+Some alpha pairs rule with ease, letting subordinates shine, while others are aggressive and paranoid.
 
-If you like wolves, you will love this book.
+Wolves play-fight—adults let pups win, and even weaker pack members get victories.
+Pups play for fun and to hone their hunting skills.
+From time to time, a wolf is exiled or leaves voluntarily, facing a choice: live alone, join another pack, or start fresh.
+
+If you love wolves, you’ll love this book.
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/the_rise_of_wolf_8.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### Africa is Not a Country by  by Dipo Faloyin
-Dipo Faloyin tears down the idea of Africa as a monolithic grim place that needs saving from Westerners with Messiah complexes.
+Dipo Faloyin dismantles the stereotype of Africa as a monolithic, struggling continent in need of Western saviors.
 
-To say that Western public's perception of Africa is not nuanced would be an understatement. Media portray it as a place where wild
-animals roam everywhere, uncivilized people live in primitive huts and make living by hunting said animals.
-Evil and corrupt warlords fight each other for power, and there is no hope of establishing functioning states.
+Western media often reduce Africa to a land of wild animals, primitive huts, and corrupt warlords, ignoring the reality: a vast, diverse continent with thriving cities, office workers, rich cultures, and independent, democratic nations.
+The popular narrative of African helplessness is both misleading and dehumanizing.
+Many Africans resent the charity ads depicting starving children—not just for their emotional manipulation but for perpetuating harmful stereotypes.
 
-The reality is vastly different. Africa is a continent of many diverse countries, with millions of people living in cities,  and working in offices.
-These countries have their unique culture, music, cuisine, and literature.
-The mainstream narrative that Africans are not self-sufficient ignores that many African countries are independent, democratic, and peaceful.
-Emotionally appealing ads with babies with inflated bellies and flies on their faces are designed to make donors feel good about themselves,
-but many people living in Africa actually hate them. For obvious reasons–they are dehumanizing and perpetuate the idea that Africans are helpless savages.
+Faloyin also examines the fight to reclaim stolen African art from Western museums.
+Some argue that Africa isn’t ready to care for its own heritage, or that Western museums offer better preservation and access.
+Yet, as Faloyin reveals, much of this art sits in basement storage, unseen and neglected.
 
-Faloyin also discusses efforts to bring back stolen African art and artifacts from Western museums. Some people in the West argue
-that Africans are not ready to take care of their own heritage while we, i.e. the West, can provide the best care possible. So, taking care of it on their behalf is the right thing to do.
-Moreover, they claim that anyone can see the art in Western museums, so, what is the problem?
-Ironically, none of these assertions is true–Faloyin documents numerous instances where African art is either hidden in museum basements,
-and thus not available to the public, or it is stored in suboptimal conditions that damage the art.
-
-Africa is Not a Country is a great book that can make you interested, entertained and furious often within a single page.
+Africa Is Not a Country is sharp, eye-opening, and often infuriating—a book that informs while challenging deeply ingrained misconceptions.
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/africa_is_not_a_country.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ### Not the End of the World by Hannah Ritchie
-Hannah Ritchie's book is refreshing. She writes about environment in a way that makes you hopeful and provides actionable advice
-that you can actually follow.
+Hannah Ritchie's book offers a refreshing take on the environment, blending hope with actionable advice.
 
-Opportunistic politicians and unethical business interests often complicate environmental protection.
-A lot of literature on the topic tends to be quite pessimistic, cataloguing our failures to implement even some basic measures.
-Ritchie, however, tries not to give in to the disillusionment. She shows that real progress has been made. Often, governments
-were forced to act not because people would suddenly start caring about the environment, but because people started demanding
-cleaner cities as their living standards increased. She demonstrates that developed countries improved in several metrics in
-envirnmental pollution in the last couple of years even if you account for emissions exported to developing countries.
-She does not claim that everything is fine, and we should just sit on out hands, but rather points out that there is a way forward, and
-that the there are degrees to which we can mess the environment up–not just binary 'apocalypse' or 'sunshine and rainbows'.
+While environmental protection is often hampered by opportunistic politicians and unethical business interests, much of the existing literature leans toward pessimism, cataloging failures and setbacks.
+Ritchie, however, refuses to succumb to disillusionment. She highlights real progress, showing that governments often acted not out of environmental concern but because people demanded cleaner cities as their living standards rose.
+She points to recent improvements in environmental pollution in developed countries, even when accounting for emissions exported to developing nations.
+Ritchie doesn’t claim everything is fine, but she argues that a balanced approach is possible—there's a middle ground between "apocalypse" and "sunshine and rainbows."
 
-Ritchie translates the more objective approach to environmental protection also to individual actions. She compares who you
-can do to reduce carbon emissions and what are the relative effects–turns out not flying and not owning a car save a lot of CO2
-while using plastic straws and bags is not that big of a deal.
+Ritchie also brings this nuanced approach to individual actions, breaking down the most effective ways to reduce carbon emissions.
+Avoiding flights and car ownership, it turns out, have a much bigger impact than things like using plastic straws or bags.
 
-Informative and engaging. Highly recommended.
+Informative, engaging, and hopeful—highly recommended.
 
 <div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/not_the_end_of_the_world.jpg" width="200" height="auto" /></div>
 <br/><br/>
 
 ## Closing thoughts
-Choosing only five books was painfully difficult. There were many more that I would love to recommend, but I wanted to keep
-this writeup brief. If you are interested in more recommendations, let me know.
+Selecting just five books was no easy task. There are many more I’d love to recommend, but I kept this brief.
+If you’re looking for more suggestions, feel free to reach out!
 
