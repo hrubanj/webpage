@@ -1,0 +1,110 @@
+---
+layout: post
+title:  "My Top 5 Books of 2024"
+date:   2025-02-09 10:00:00 +0000
+categories: [books]
+---
+
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<a href="{{ site.baseurl }}/index.html"><i class='fa fa-home'></i> Home</a>
+
+
+Last year, I revisited my favorite reads from the year before. It helped me recall why they stood out and maybe even inspire someone to pick them up.
+
+In that spirit, here are my top five books of 2024:
+
+### A Problem from Hell: America and the Age of Genocide by Samantha Power
+Samantha Power examines how the U.S. and the world responded to 20th-century genocides—often too late and too weakly.
+These atrocities didn’t erupt overnight; tensions brewed for years.
+Officials hesitated, clinging to the naive belief that perpetrators would respect international law.
+Politicians too often took mass murderers at their word, unwilling to risk political capital to help victims.
+
+Yet, Power also highlights activists, politicians, and journalists who fought to prevent genocide and hold perpetrators accountable.
+Thanks to their efforts, genocide is now an international crime, though enforcement remains fraught—many nations refuse to let international courts prosecute their citizens.
+An imperfect system, but better than none.
+
+This book is a wake-up call against wishful thinking. Ignoring worst-case scenarios won’t make them less real.
+Most people are good and rational. But some are not, and we must reckon with that.
+
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/a_problem_from_hell.png" width="200" height="auto" /></div>
+<br/><br/>
+
+### Determined: A Science of Life without Free Will by Robert Sapolsky
+When does free will come into play? At what point in speaking, moving, or thinking do we make a choice independent of our past and environment?
+Sapolsky’s answer: never.
+
+His logic is hard to refute—every decision stems from genetics, upbringing, and circumstances.
+Trace any choice back, and you’ll find a chain of causes.
+Even if you think, *'I’ll eat this cookie because I want to'*, the desire itself has a cause.
+Whether you eat it or not, the choice was never truly free.
+
+What struck me most were the book’s real-world implications.
+Sapolsky highlights research linking violent crime to traumatic brain injuries—damaged brains make people more prone to violence.
+This shouldn’t completely absolve them of responsibility, but it suggests that preventing and treating brain injuries could reduce crime.
+Instead of focusing solely on punishment, we should address the root causes.
+
+Should the existence of free will shape your daily choices?
+
+I don’t think so—at least, not unless you're absolutely certain it doesn’t exist.
+If free will does exist, your decisions could potentially improve your life.
+If it doesn’t, you’re not really choosing anything.
+
+Either way, the best strategy is to live as if your choices matter—whether they truly do or not.
+
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/determined.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### The Rise of Wolf 8: Witnessing the Triumph of Yellowstone's Underdog by Rick McIntyre
+I like wolves. I’ve yet to see one in the wild, but I’ve read enough to know they never stop fascinating me.
+
+Rick McIntyre spent thousands of hours observing Yellowstone’s wolves, piecing together the lives of entire packs.
+Their dynamics are far more complex than you might think. Some leaders are small but fearless and intelligent.
+Some alpha pairs rule with ease, letting subordinates shine, while others are aggressive and paranoid.
+
+Wolves play-fight—adults let pups win, and even weaker pack members get victories.
+Pups play for fun and to hone their hunting skills.
+From time to time, a wolf is exiled or leaves voluntarily, facing a choice: live alone, join another pack, or start fresh.
+
+If you love wolves, you’ll love this book.
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/the_rise_of_wolf_8.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### Africa is Not a Country by Dipo Faloyin
+Dipo Faloyin dismantles the stereotype of Africa as a monolithic, struggling continent in need of Western saviors.
+
+Western media often reduce Africa to a land of wild animals, primitive huts, and corrupt warlords, ignoring the reality: a vast, diverse continent with thriving cities, office workers, rich cultures, and independent, democratic nations.
+The popular narrative of African helplessness is both misleading and dehumanizing.
+Many Africans resent the charity ads depicting starving children—not just for their emotional manipulation but for perpetuating harmful stereotypes.
+
+Faloyin also examines the fight to reclaim stolen African art from Western museums.
+Some argue that Africa isn’t ready to care for its own heritage, or that Western museums offer better preservation and access.
+Yet, as Faloyin reveals, much of this art sits in basement storage, unseen and neglected.
+
+Africa Is Not a Country is sharp, eye-opening, and often infuriating—a book that informs while challenging persistent misconceptions.
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/africa_is_not_a_country.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+### Not the End of the World by Hannah Ritchie
+Hannah Ritchie's book offers a refreshing take on the environment, blending hope with actionable advice.
+
+While environmental protection is often hampered by opportunistic politicians and unethical business interests, much of the existing literature leans toward pessimism, cataloging failures and setbacks.
+Ritchie, however, refuses to give in to disillusionment. She highlights real progress, showing that governments often acted not out of environmental concern but because people demanded cleaner cities as their living standards rose.
+She points to recent improvements in environmental pollution in developed countries, even when accounting for emissions exported to developing nations.
+Ritchie doesn’t claim everything is fine, but she argues that a balanced approach is possible—there's a middle ground between "apocalypse" and "sunshine and rainbows."
+
+Ritchie also brings this nuanced approach to individual actions, breaking down the most effective ways to reduce carbon emissions.
+Avoiding flights and car ownership, it turns out, have a much bigger impact than things like using plastic straws or bags.
+
+Informative, engaging, and hopeful—highly recommended.
+
+<div style="text-align: center;"><img src="{{ site.baseurl }}/assets/images/not_the_end_of_the_world.jpg" width="200" height="auto" /></div>
+<br/><br/>
+
+## Closing thoughts
+Selecting just five books was no easy task. There are many more I’d love to recommend, but wanted to keep this brief.
+If you’re looking for more suggestions, feel free to reach out!
+
